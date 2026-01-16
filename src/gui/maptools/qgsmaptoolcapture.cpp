@@ -14,7 +14,10 @@
  ***************************************************************************/
 
 #include "qgsmaptoolcapture.h"
-#include "moc_qgsmaptoolcapture.cpp"
+
+#include "qgsadvanceddigitizingdockwidget.h"
+#include "qgsapplication.h"
+#include "qgscircularstring.h"
 #include "qgsexception.h"
 #include "qgsfeatureiterator.h"
 #include "qgsgeometryvalidator.h"
@@ -23,27 +26,27 @@
 #include "qgsmapcanvas.h"
 #include "qgsmapcanvastracer.h"
 #include "qgsmapmouseevent.h"
-#include "qgspolygon.h"
-#include "qgsrubberband.h"
-#include "qgssnapindicator.h"
-#include "qgsvectorlayer.h"
-#include "qgsvertexmarker.h"
-#include "qgssettingsregistrycore.h"
-#include "qgsapplication.h"
-#include "qgsproject.h"
 #include "qgsmaptoolcapturerubberband.h"
 #include "qgsmaptoolshapeabstract.h"
 #include "qgsmaptoolshaperegistry.h"
+#include "qgspolygon.h"
+#include "qgsproject.h"
+#include "qgsrubberband.h"
+#include "qgssettingsregistrycore.h"
+#include "qgssnapindicator.h"
 #include "qgssnappingutils.h"
-#include "qgsadvanceddigitizingdockwidget.h"
+#include "qgsvectorlayer.h"
+#include "qgsvertexmarker.h"
 
 #include <QAction>
 #include <QCursor>
 #include <QPixmap>
 #include <QStatusBar>
+
 #include <algorithm>
 #include <memory>
 
+#include "moc_qgsmaptoolcapture.cpp"
 
 QgsMapToolCapture::QgsMapToolCapture( QgsMapCanvas *canvas, QgsAdvancedDigitizingDockWidget *cadDockWidget, CaptureMode mode )
   : QgsMapToolAdvancedDigitizing( canvas, cadDockWidget )
@@ -1409,6 +1412,23 @@ void QgsMapToolCapture::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
 
       if ( mode() == CaptureLine )
       {
+        if ( QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( layer() ) )
+        {
+          if ( QgsWkbTypes::flatType( vlayer->wkbType() ) == Qgis::WkbType::CircularString )
+          {
+            if ( const QgsCompoundCurve *compound = qgsgeometry_cast<const QgsCompoundCurve *>( captureCurve() ) )
+            {
+              if ( compound->nCurves() == 1 )
+              {
+                if ( const QgsCircularString *circularPart = qgsgeometry_cast<const QgsCircularString *>( compound->curveAt( 0 ) ) )
+                {
+                  curveToAdd.reset( circularPart->clone() );
+                }
+              }
+            }
+          }
+        }
+
         g = QgsGeometry( curveToAdd->clone() );
         geometryCaptured( g );
         lineCaptured( curveToAdd.release() );

@@ -142,6 +142,8 @@ QgsWFSProvider::QgsWFSProvider( const QString &uri, const ProviderOptions &optio
       mValid = false;
       return;
     }
+    if ( QgsWkbTypes::isCurvedType( mShared->mWKBType ) )
+      mCapabilities |= Qgis::VectorProviderCapability::CircularGeometries;
     mThisTypenameFields = mShared->mFields;
     mLayerPropertiesListWhenNoSqlRequest = mShared->mLayerPropertiesList;
   }
@@ -156,6 +158,8 @@ QgsWFSProvider::QgsWFSProvider( const QString &uri, const ProviderOptions &optio
   if ( mShared->mWKBType == Qgis::WkbType::Unknown && mShared->mURI.hasGeometryTypeFilter() && mShared->mCaps.supportsGeometryTypeFilters() )
   {
     mShared->mWKBType = mShared->mURI.geometryTypeFilter();
+    if ( QgsWkbTypes::isCurvedType( mShared->mWKBType ) )
+      mCapabilities |= Qgis::VectorProviderCapability::CircularGeometries;
     if ( mShared->mWKBType != Qgis::WkbType::Unknown )
     {
       mShared->computeGeometryTypeFilter();
@@ -615,6 +619,8 @@ bool QgsWFSProvider::processSQL( const QString &sqlString, QString &errorMsg, QS
     {
       mShared->mGeometryAttribute = geometryAttribute;
       mShared->mWKBType = geomType;
+      if ( QgsWkbTypes::isCurvedType( mShared->mWKBType ) )
+        mCapabilities |= Qgis::VectorProviderCapability::CircularGeometries;
       mGeometryMaybeMissing = geometryMaybeMissing;
       mThisTypenameFields = fields;
     }
@@ -879,6 +885,8 @@ void QgsWFSProvider::featureReceivedAnalyzeOneFeature( QVector<QgsFeatureUniqueI
           }
         }
       }
+      if ( QgsWkbTypes::isCurvedType( mShared->mWKBType ) )
+        mCapabilities |= Qgis::VectorProviderCapability::CircularGeometries;
     }
   }
   if ( list.size() != 0 )
@@ -2676,6 +2684,11 @@ bool QgsWFSProvider::getCapabilities()
     }
   }
 
+  if ( QgsWkbTypes::isCurvedType( mShared->mWKBType ) )
+  {
+    mCapabilities |= Qgis::VectorProviderCapability::CircularGeometries;
+  }
+
   if ( !foundLayer )
   {
     QgsMessageLog::logMessage( tr( "Could not find typename %1 in capabilities for url %2" ).arg( thisLayerName, dataSourceUri() ), tr( "WFS" ) );
@@ -2691,8 +2704,10 @@ Qgis::WkbType QgsWFSProvider::geomTypeFromPropertyType( const QString &attName, 
   QgsDebugMsgLevel( QStringLiteral( "DescribeFeatureType geometry attribute \"%1\" type is \"%2\"" ).arg( attName, propType ), 4 );
   if ( propType == QLatin1String( "Point" ) )
     return Qgis::WkbType::Point;
-  if ( propType == QLatin1String( "LineString" ) || propType == QLatin1String( "Curve" ) )
+  if ( propType == QLatin1String( "LineString" ) )
     return Qgis::WkbType::LineString;
+  if ( propType == QLatin1String( "Curve" ) )
+    return Qgis::WkbType::CompoundCurve;
   if ( propType == QLatin1String( "Polygon" ) || propType == QLatin1String( "Surface" ) )
     return Qgis::WkbType::Polygon;
   if ( propType == QLatin1String( "MultiPoint" ) )
