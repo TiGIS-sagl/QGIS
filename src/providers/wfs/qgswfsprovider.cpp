@@ -147,6 +147,8 @@ QgsWFSProvider::QgsWFSProvider( const QString &uri, const ProviderOptions &optio
       mValid = false;
       return;
     }
+    if ( QgsWkbTypes::isCurvedType( mShared->mWKBType ) )
+      mCapabilities |= Qgis::VectorProviderCapability::CircularGeometries;
     mThisTypenameFields = mShared->mFields;
     mLayerPropertiesListWhenNoSqlRequest = mShared->mLayerPropertiesList;
   }
@@ -161,6 +163,8 @@ QgsWFSProvider::QgsWFSProvider( const QString &uri, const ProviderOptions &optio
   if ( mShared->mWKBType == Qgis::WkbType::Unknown && mShared->mURI.hasGeometryTypeFilter() && mShared->mCaps.supportsGeometryTypeFilters() )
   {
     mShared->mWKBType = mShared->mURI.geometryTypeFilter();
+    if ( QgsWkbTypes::isCurvedType( mShared->mWKBType ) )
+      mCapabilities |= Qgis::VectorProviderCapability::CircularGeometries;
     if ( mShared->mWKBType != Qgis::WkbType::Unknown )
     {
       mShared->computeGeometryTypeFilter();
@@ -633,6 +637,8 @@ bool QgsWFSProvider::processSQL( const QString &sqlString, QString &errorMsg, QS
     {
       mShared->mGeometryAttribute = geometryAttribute;
       mShared->mWKBType = geomType;
+      if ( QgsWkbTypes::isCurvedType( mShared->mWKBType ) )
+        mCapabilities |= Qgis::VectorProviderCapability::CircularGeometries;
       mGeometryMaybeMissing = geometryMaybeMissing;
       mThisTypenameFields = fields;
     }
@@ -906,6 +912,8 @@ void QgsWFSProvider::featureReceivedAnalyzeOneFeature( const QVector<QgsFeatureU
           }
         }
       }
+      if ( QgsWkbTypes::isCurvedType( mShared->mWKBType ) )
+        mCapabilities |= Qgis::VectorProviderCapability::CircularGeometries;
     }
   }
 
@@ -1889,6 +1897,11 @@ bool QgsWFSProvider::getCapabilities()
 
       foundLayer = true;
     }
+  }
+
+  if ( QgsWkbTypes::isCurvedType( mShared->mWKBType ) )
+  {
+    mCapabilities |= Qgis::VectorProviderCapability::CircularGeometries;
   }
 
   if ( !foundLayer )
