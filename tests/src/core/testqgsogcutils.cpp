@@ -172,6 +172,84 @@ void TestQgsOgcUtils::testGeometryToGML()
   ogcElem = comparableElement( doc.toString( -1 ) );
   QVERIFY( QgsTestUtils::compareDomElements( xmlElem, ogcElem ) );
   doc.removeChild( elemLine );
+
+  const QgsGeometry geomCircularString( QgsGeometry::fromWkt( QStringLiteral( "CIRCULARSTRING(0 0, 1 1, 2 0)" ) ) );
+
+  QDomElement elemCircularGml2 = QgsOgcUtils::geometryToGML( geomCircularString, doc );
+  QVERIFY( elemCircularGml2.isNull() );
+
+  QDomElement elemCircular = QgsOgcUtils::geometryToGML( geomCircularString, doc, QStringLiteral( "GML3" ) );
+  QVERIFY( !elemCircular.isNull() );
+  doc.appendChild( elemCircular );
+  xmlElem = comparableElement( QStringLiteral( "<gml:Curve><gml:segments><gml:ArcString><gml:posList srsDimension=\"2\">0 0 1 1 2 0</gml:posList></gml:ArcString></gml:segments></gml:Curve>" ) );
+  ogcElem = comparableElement( doc.toString( -1 ) );
+  QVERIFY( QgsTestUtils::compareDomElements( xmlElem, ogcElem ) );
+  doc.removeChild( elemCircular );
+
+  const QgsGeometry geomCircularStringZ( QgsGeometry::fromWkt( QStringLiteral( "CIRCULARSTRING Z(0 0 1, 1 1 2, 2 0 3)" ) ) );
+
+  QDomElement elemCircularZGml2 = QgsOgcUtils::geometryToGML( geomCircularStringZ, doc );
+  QVERIFY( elemCircularZGml2.isNull() );
+
+  QDomElement elemCircularZ = QgsOgcUtils::geometryToGML( geomCircularStringZ, doc, QStringLiteral( "GML3" ) );
+  QVERIFY( !elemCircularZ.isNull() );
+  doc.appendChild( elemCircularZ );
+  xmlElem = comparableElement( QStringLiteral( "<gml:Curve><gml:segments><gml:ArcString><gml:posList srsDimension=\"3\">0 0 1 1 1 2 2 0 3</gml:posList></gml:ArcString></gml:segments></gml:Curve>" ) );
+  ogcElem = comparableElement( doc.toString( -1 ) );
+  QVERIFY( QgsTestUtils::compareDomElements( xmlElem, ogcElem ) );
+  doc.removeChild( elemCircularZ );
+
+  const QgsGeometry geomCompoundCurve( QgsGeometry::fromWkt( QStringLiteral( "COMPOUNDCURVE(CIRCULARSTRING(0 0, 1 1, 2 0),(2 0, 3 0))" ) ) );
+
+  QDomElement elemCompoundGml2 = QgsOgcUtils::geometryToGML( geomCompoundCurve, doc );
+  QVERIFY( elemCompoundGml2.isNull() );
+
+  QDomElement elemCompound = QgsOgcUtils::geometryToGML( geomCompoundCurve, doc, QStringLiteral( "GML3" ) );
+  QVERIFY( !elemCompound.isNull() );
+  doc.appendChild( elemCompound );
+  xmlElem = comparableElement( QStringLiteral( "<gml:Curve><gml:segments><gml:ArcString><gml:posList srsDimension=\"2\">0 0 1 1 2 0</gml:posList></gml:ArcString><gml:LineStringSegment><gml:posList srsDimension=\"2\">2 0 3 0</gml:posList></gml:LineStringSegment></gml:segments></gml:Curve>" ) );
+  ogcElem = comparableElement( doc.toString( -1 ) );
+  QVERIFY( QgsTestUtils::compareDomElements( xmlElem, ogcElem ) );
+  doc.removeChild( elemCompound );
+
+  const QgsGeometry geomCompoundCurveZ( QgsGeometry::fromWkt( QStringLiteral( "COMPOUNDCURVE Z(CIRCULARSTRING Z(0 0 1, 1 1 2, 2 0 3),(2 0 3, 3 0 4))" ) ) );
+
+  QDomElement elemCompoundZGml2 = QgsOgcUtils::geometryToGML( geomCompoundCurveZ, doc );
+  QVERIFY( elemCompoundZGml2.isNull() );
+
+  QDomElement elemCompoundZ = QgsOgcUtils::geometryToGML( geomCompoundCurveZ, doc, QStringLiteral( "GML3" ) );
+  QVERIFY( !elemCompoundZ.isNull() );
+  doc.appendChild( elemCompoundZ );
+  xmlElem = comparableElement( QStringLiteral( "<gml:Curve><gml:segments><gml:ArcString><gml:posList srsDimension=\"3\">0 0 1 1 1 2 2 0 3</gml:posList></gml:ArcString><gml:LineStringSegment><gml:posList srsDimension=\"3\">2 0 3 3 0 4</gml:posList></gml:LineStringSegment></gml:segments></gml:Curve>" ) );
+  ogcElem = comparableElement( doc.toString( -1 ) );
+  QVERIFY( QgsTestUtils::compareDomElements( xmlElem, ogcElem ) );
+  doc.removeChild( elemCompoundZ );
+
+  const QgsGeometry geomCurvePolygon( QgsGeometry::fromWkt( QStringLiteral( "CURVEPOLYGON(CIRCULARSTRING(0 0, 1 1, 2 0, 0 0))" ) ) );
+
+  QDomElement elemCurvePolygonGml2 = QgsOgcUtils::geometryToGML( geomCurvePolygon, doc );
+  QVERIFY( elemCurvePolygonGml2.isNull() );
+
+  QDomElement elemCurvePolygon = QgsOgcUtils::geometryToGML( geomCurvePolygon, doc, QStringLiteral( "GML3" ) );
+  QVERIFY( !elemCurvePolygon.isNull() );
+  doc.appendChild( elemCurvePolygon );
+  xmlElem = comparableElement( QStringLiteral( "<gml:Polygon><gml:exterior><gml:Ring><gml:curveMember><gml:Curve><gml:segments><gml:ArcString><gml:posList srsDimension=\"2\">0 0 1 1 2 0 0 0</gml:posList></gml:ArcString></gml:segments></gml:Curve></gml:curveMember></gml:Ring></gml:exterior></gml:Polygon>" ) );
+  ogcElem = comparableElement( doc.toString( -1 ) );
+  QVERIFY( QgsTestUtils::compareDomElements( xmlElem, ogcElem ) );
+  doc.removeChild( elemCurvePolygon );
+
+  const QgsGeometry geomCurvePolygonZ( QgsGeometry::fromWkt( QStringLiteral( "CURVEPOLYGON Z(CIRCULARSTRING Z(0 0 1, 1 1 2, 2 0 3, 0 0 1))" ) ) );
+
+  QDomElement elemCurvePolygonZGml2 = QgsOgcUtils::geometryToGML( geomCurvePolygonZ, doc );
+  QVERIFY( elemCurvePolygonZGml2.isNull() );
+
+  QDomElement elemCurvePolygonZ = QgsOgcUtils::geometryToGML( geomCurvePolygonZ, doc, QStringLiteral( "GML3" ) );
+  QVERIFY( !elemCurvePolygonZ.isNull() );
+  doc.appendChild( elemCurvePolygonZ );
+  xmlElem = comparableElement( QStringLiteral( "<gml:Polygon><gml:exterior><gml:Ring><gml:curveMember><gml:Curve><gml:segments><gml:ArcString><gml:posList srsDimension=\"3\">0 0 1 1 1 2 2 0 3 0 0 1</gml:posList></gml:ArcString></gml:segments></gml:Curve></gml:curveMember></gml:Ring></gml:exterior></gml:Polygon>" ) );
+  ogcElem = comparableElement( doc.toString( -1 ) );
+  QVERIFY( QgsTestUtils::compareDomElements( xmlElem, ogcElem ) );
+  doc.removeChild( elemCurvePolygonZ );
 }
 
 void TestQgsOgcUtils::testExpressionFromOgcFilterWFS20_data()
