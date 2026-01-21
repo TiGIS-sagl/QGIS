@@ -1,3 +1,4 @@
 *.sip export-subst
 *.py export-subst
 tests/testdata/auth_system/certs_keys/donald_key_DSA_crlf.pem text eol=crlf
+ms-windows/mingw/qgis.bat text eol=crlf

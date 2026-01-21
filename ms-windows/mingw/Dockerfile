@@ -18,4 +18,10 @@ COPY ms-windows/mingw/mingwdeps.sh /tmp/mingwdeps.sh
 # but may not be pulled in as transitive deps on all Fedora releases.
 RUN sh /tmp/mingwdeps.sh;
 
+# QGIS build generates qgsversion.h by running git commands in /QGIS.
+# When /QGIS is a bind-mounted working tree with a different uid/gid than the
+# container user (often root), git may refuse to operate unless the directory
+# is marked as safe.
+RUN git config --system --add safe.directory /QGIS
+
 WORKDIR /QGIS

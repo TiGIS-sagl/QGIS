@@ -130,6 +130,10 @@ echo "::group::install"
 mingw$bits-make -C"$BUILDDIR" -j"$njobs" DESTDIR="${installroot}" install # VERBOSE=1
 echo "::endgroup::"
 
+# Install a Windows launcher next to qgis.exe
+mkdir -p "$installprefix/bin"
+lnk "$SRCDIR/ms-windows/mingw/qgis.bat" "$installprefix/bin/qgis.bat"
+
 #echo "ccache statistics"
 echo "::group::ccache stats"
 ccache -s
