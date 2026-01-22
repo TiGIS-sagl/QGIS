@@ -82,7 +82,7 @@ jobs:
                 -D VCPKG_TARGET_TRIPLET=x64-windows-release \
                 -D VCPKG_HOST_TRIPLET=x64-windows-release \
                 -D WITH_DESKTOP=ON \
-                -D WITH_3D=ON \
+                -D WITH_3D=OFF \
                 -D WITH_BINDINGS=ON \
                 -D WITH_GEOGRAPHICLIB=OFF \
                 -D WITH_SFCGAL=ON \
@@ -95,12 +95,21 @@ jobs:
                 -D WITH_QTWEBENGINE=OFF \
                 -D VCPKG_INSTALL_OPTIONS="--x-buildtrees-root=C:/src" \
                 -D NUGET_USERNAME=${{ github.actor }} \
-                -D NUGET_TOKEN=${{ secrets.GITHUB_TOKEN }}
+                -D NUGET_TOKEN=${{ secrets.GITHUB_TOKEN }} \
+                -D WITH_SERVER=OFF
 
       - name: 🌋 Build
         shell: bash
         run: |
           cmake --build "${{ github.workspace }}/build" --config Release
+
+      - name: Install Python package networkx
+        shell: pwsh
+        run: |
+          $py = "${{ github.workspace }}\build\vcpkg_installed\x64-windows-release\tools\python3\python.exe"
+          & $py -m ensurepip --upgrade
+          & $py -m pip install --upgrade pip
+          & $py -m pip install networkx==3.3
 
       #      - uses: m-kuhn/action-tmate@patch-1
       #        if: failure()
