@@ -2714,8 +2714,10 @@ Qgis::WkbType QgsWFSProvider::geomTypeFromPropertyType( const QString &attName, 
   QgsDebugMsgLevel( QStringLiteral( "DescribeFeatureType geometry attribute \"%1\" type is \"%2\"" ).arg( attName, propType ), 4 );
   if ( propType == QLatin1String( "Point" ) )
     return Qgis::WkbType::Point;
-  if ( propType == QLatin1String( "LineString" ) || propType == QLatin1String( "Curve" ) )
+  if ( propType == QLatin1String( "LineString" ) )
     return Qgis::WkbType::LineString;
+  if ( propType == QLatin1String( "Curve" ) )
+    return Qgis::WkbType::CompoundCurve;
   if ( propType == QLatin1String( "Polygon" ) || propType == QLatin1String( "Surface" ) )
     return Qgis::WkbType::Polygon;
   if ( propType == QLatin1String( "MultiPoint" ) )
