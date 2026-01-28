@@ -575,7 +575,8 @@ void QgsGmlStreamingParser::startElement( const XML_Char *el, const XML_Char **a
   const bool isGMLNS = ( nsLen == mGMLNameSpaceURI.size() && mGMLNameSpaceURIPtr && memcmp( el, mGMLNameSpaceURIPtr, nsLen ) == 0 );
   bool isGeom = false;
 
-  if ( parseMode == Geometry || parseMode == Coordinate || parseMode == PosList ||
+  if ( parseMode == Geometry || parseMode == Curve ||
+       parseMode == Coordinate || parseMode == PosList ||
        parseMode == MultiPoint || parseMode == MultiLine || parseMode == MultiPolygon )
   {
     mGeometryString.append( "<", 1 );
@@ -794,6 +795,12 @@ void QgsGmlStreamingParser::startElement( const XML_Char *el, const XML_Char **a
   {
     isGeom = true;
   }
+  else if ( parseMode == Geometry && !mAttributeValIsNested && isGMLNS && LOCALNAME_EQUALS( "Curve" ) )
+  {
+    isGeom = true;
+    mParseModeStack.push( QgsGmlStreamingParser::Curve );
+    mCurveSegments.push( QList<QByteArray>() );
+  }
   else if ( !mAttributeValIsNested && isGMLNS &&
             localNameLen == static_cast<int>( strlen( "Polygon" ) ) && memcmp( pszLocalName, "Polygon", localNameLen ) == 0 )
   {
@@ -959,7 +966,8 @@ void QgsGmlStreamingParser::startElement( const XML_Char *el, const XML_Char **a
             !LOCALNAME_EQUALS( "surfaceMember" ) &&
             !LOCALNAME_EQUALS( "Curve" ) &&
             !LOCALNAME_EQUALS( "segments" ) &&
-            !LOCALNAME_EQUALS( "LineStringSegment" ) )
+            !LOCALNAME_EQUALS( "LineStringSegment" ) &&
+            !( parseMode == Curve && LOCALNAME_EQUALS( "ArcString" ) ) )
   {
     //QgsDebugError( "Found unhandled geometry element " + QString::fromUtf8( pszLocalName, localNameLen ) );
     mFoundUnhandledGeometryElement = true;
@@ -1290,6 +1298,75 @@ void QgsGmlStreamingParser::endElement( const XML_Char *el )
       {
         QgsDebugError( u"No wkb fragments"_s );
       }
+    }
+  }
+  else if ( parseMode == Curve && isGMLNS && LOCALNAME_EQUALS( "LineStringSegment" ) )
+  {
+    QList<QgsPoint> pointList;
+    int dimension = 0;
+    if ( pointsFromString( pointList, mStringCash, &dimension ) != 0 )
+    {
+      //error
+    }
+    mStringCash.clear();
+    mDimension = dimension;
+
+    mWkbType = dimension > 2 ? Qgis::WkbType::LineStringZ : Qgis::WkbType::LineString;
+
+    QByteArray segmentWkb;
+    if ( getLineWKB( segmentWkb, pointList, dimension ) != 0 )
+    {
+      //error
+    }
+
+    if ( !mCurveSegments.isEmpty() )
+    {
+      mCurveSegments.top().append( segmentWkb );
+    }
+    else
+    {
+      QgsDebugError( u"No curve segments container"_s );
+    }
+  }
+  else if ( parseMode == Curve && isGMLNS && LOCALNAME_EQUALS( "ArcString" ) )
+  {
+    QList<QgsPoint> pointList;
+    int dimension = 0;
+    if ( pointsFromString( pointList, mStringCash, &dimension ) != 0 )
+    {
+      //error
+    }
+    mStringCash.clear();
+    mDimension = dimension;
+
+    mWkbType = dimension > 2 ? Qgis::WkbType::CircularStringZ : Qgis::WkbType::CircularString;
+
+    QByteArray segmentWkb;
+    if ( getArcWKB( segmentWkb, pointList, dimension ) != 0 )
+    {
+      //error
+    }
+
+    if ( !mCurveSegments.isEmpty() )
+    {
+      mCurveSegments.top().append( segmentWkb );
+    }
+    else
+    {
+      QgsDebugError( u"No curve segments container"_s );
+    }
+  }
+  else if ( parseMode == Curve && isGMLNS && LOCALNAME_EQUALS( "Curve" ) )
+  {
+    if ( mCurveSegments.isEmpty() )
+    {
+      QgsDebugError( u"No curve segments to assemble"_s );
+      mParseModeStack.pop();
+    }
+    else
+    {
+      createCompoundCurveFromSegments();
+      mParseModeStack.pop();
     }
   }
   else if ( !mAttributeValIsNested &&
@@ -1741,6 +1818,28 @@ int QgsGmlStreamingParser::getLineWKB( QByteArray &wkbPtr, const QList<QgsPoint>
   return 0;
 }
 
+int QgsGmlStreamingParser::getArcWKB( QByteArray &wkbPtr, const QList<QgsPoint> &arcCoordinates, int dimension ) const
+{
+  const int wkbSize = 1 + 2 * static_cast<int>( sizeof( int ) ) + static_cast<int>( arcCoordinates.size() ) * dimension * static_cast<int>( sizeof( double ) );
+  wkbPtr = QByteArray( wkbSize, Qt::Uninitialized );
+
+  QgsWkbPtr fillPtr( wkbPtr );
+
+  fillPtr << mEndian << ( dimension > 2 ? Qgis::WkbType::CircularStringZ : Qgis::WkbType::CircularString ) << arcCoordinates.size();
+
+  QList<QgsPoint>::const_iterator iter;
+  for ( iter = arcCoordinates.constBegin(); iter != arcCoordinates.constEnd(); ++iter )
+  {
+    fillPtr << iter->x() << iter->y();
+    if ( dimension > 2 )
+    {
+      fillPtr << iter->z();
+    }
+  }
+
+  return 0;
+}
+
 int QgsGmlStreamingParser::getRingWKB( QByteArray &wkbPtr, const QList<QgsPoint> &ringCoordinates, int dimension ) const
 {
   const int wkbSize = static_cast<int>( sizeof( int ) ) + static_cast<int>( ringCoordinates.size() ) * dimension * static_cast<int>( sizeof( double ) );
@@ -1760,6 +1859,32 @@ int QgsGmlStreamingParser::getRingWKB( QByteArray &wkbPtr, const QList<QgsPoint>
     }
   }
 
+  return 0;
+}
+
+int QgsGmlStreamingParser::createCompoundCurveFromSegments()
+{
+  const QList<QByteArray> &segments = mCurveSegments.top();
+
+  int size = 1 + 2 * static_cast<int>( sizeof( int ) );
+  for ( const QByteArray &segment : std::as_const( segments ) )
+  {
+    size += segment.size();
+  }
+
+  mCurrentWKB = QByteArray( size, Qt::Uninitialized );
+  QgsWkbPtr wkbPtr( mCurrentWKB );
+  const Qgis::WkbType curveWkbType = mDimension > 2 ? Qgis::WkbType::CompoundCurveZ : Qgis::WkbType::CompoundCurve;
+  wkbPtr << mEndian << curveWkbType << segments.size();
+
+  for ( const QByteArray &segment : std::as_const( segments ) )
+  {
+    memcpy( wkbPtr, segment.constData(), segment.size() );
+    wkbPtr += segment.size();
+  }
+
+  mWkbType = curveWkbType;
+  mCurveSegments.pop();
   return 0;
 }
 

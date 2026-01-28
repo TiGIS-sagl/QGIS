@@ -171,6 +171,7 @@ class CORE_EXPORT QgsGmlStreamingParser
       FeatureTuple,
       AttributeTuple,
       Geometry,
+      Curve,
       Coordinate,
       PosList,
       MultiPoint,
@@ -243,6 +244,7 @@ class CORE_EXPORT QgsGmlStreamingParser
     int pointsFromString( QList<QgsPoint> &points, const QString &coordString, int *dimension = nullptr ) const;
     int getPointWKB( QByteArray &wkbPtr, const QgsPoint &, int dimension ) const;
     int getLineWKB( QByteArray &wkbPtr, const QList<QgsPoint> &lineCoordinates, int dimension ) const;
+    int getArcWKB( QByteArray &wkbPtr, const QList<QgsPoint> &arcCoordinates, int dimension ) const;
     int getRingWKB( QByteArray &wkbPtr, const QList<QgsPoint> &ringCoordinates, int dimension ) const;
 
     /**
@@ -255,6 +257,7 @@ class CORE_EXPORT QgsGmlStreamingParser
     int createMultiPointFromFragments();
     int createPolygonFromFragments();
     int createMultiPolygonFromFragments();
+    int createCompoundCurveFromSegments();
     //! Adds all the integers contained in mCurrentWKBFragmentSizes
     int totalWKBFragmentSize() const;
 
@@ -326,6 +329,9 @@ class CORE_EXPORT QgsGmlStreamingParser
      * are used
     */
     QList< QList< QByteArray > > mCurrentWKBFragments;
+
+    //! Intermediate WKB segments during parsing of gml:Curve
+    QStack< QList< QByteArray > > mCurveSegments;
     QString mAttributeName;
     int mAttributeDepth = -1;
     bool mAttributeValIsNested = false;
