@@ -1329,19 +1329,17 @@ void QgsGmlStreamingParser::endElement( const XML_Char *el )
   }
   else if ( parseMode == Curve && isGMLNS && LOCALNAME_EQUALS( "LineStringSegment" ) )
   {
-    QList<QgsPoint> pointList;
-    int dimension = 0;
-    if ( pointsFromString( pointList, mStringCash, &dimension ) != 0 )
+    QList<QgsPointXY> pointList;
+    if ( pointsFromString( pointList, mStringCash ) != 0 )
     {
       //error
     }
     mStringCash.clear();
-    mDimension = dimension;
 
-    mWkbType = dimension > 2 ? Qgis::WkbType::LineStringZ : Qgis::WkbType::LineString;
+    mWkbType = Qgis::WkbType::LineString;
 
     QByteArray segmentWkb;
-    if ( getLineWKB( segmentWkb, pointList, dimension ) != 0 )
+    if ( getLineWKB( segmentWkb, pointList ) != 0 )
     {
       //error
     }
@@ -1357,19 +1355,17 @@ void QgsGmlStreamingParser::endElement( const XML_Char *el )
   }
   else if ( parseMode == Curve && isGMLNS && LOCALNAME_EQUALS( "ArcString" ) )
   {
-    QList<QgsPoint> pointList;
-    int dimension = 0;
-    if ( pointsFromString( pointList, mStringCash, &dimension ) != 0 )
+    QList<QgsPointXY> pointList;
+    if ( pointsFromString( pointList, mStringCash ) != 0 )
     {
       //error
     }
     mStringCash.clear();
-    mDimension = dimension;
 
-    mWkbType = dimension > 2 ? Qgis::WkbType::CircularStringZ : Qgis::WkbType::CircularString;
+    mWkbType = Qgis::WkbType::CircularString;
 
     QByteArray segmentWkb;
-    if ( getArcWKB( segmentWkb, pointList, dimension ) != 0 )
+    if ( getArcWKB( segmentWkb, pointList ) != 0 )
     {
       //error
     }
@@ -1779,45 +1775,35 @@ int QgsGmlStreamingParser::getLineWKB( QByteArray &wkbPtr, const QList<QgsPointX
   return 0;
 }
 
-int QgsGmlStreamingParser::getArcWKB( QByteArray &wkbPtr, const QList<QgsPoint> &arcCoordinates, int dimension ) const
+int QgsGmlStreamingParser::getArcWKB( QByteArray &wkbPtr, const QList<QgsPointXY> &arcCoordinates ) const
 {
-  const int wkbSize = 1 + 2 * static_cast<int>( sizeof( int ) ) + static_cast<int>( arcCoordinates.size() ) * dimension * static_cast<int>( sizeof( double ) );
+  const int wkbSize = 1 + 2 * sizeof( int ) + arcCoordinates.size() * 2 * sizeof( double );
   wkbPtr = QByteArray( wkbSize, Qt::Uninitialized );
 
   QgsWkbPtr fillPtr( wkbPtr );
 
-  fillPtr << mEndian << ( dimension > 2 ? Qgis::WkbType::CircularStringZ : Qgis::WkbType::CircularString ) << arcCoordinates.size();
+  fillPtr << mEndian << Qgis::WkbType::CircularString << arcCoordinates.size();
 
-  QList<QgsPoint>::const_iterator iter;
-  for ( iter = arcCoordinates.constBegin(); iter != arcCoordinates.constEnd(); ++iter )
+  for ( const QgsPointXY &pt : arcCoordinates )
   {
-    fillPtr << iter->x() << iter->y();
-    if ( dimension > 2 )
-    {
-      fillPtr << iter->z();
-    }
+    fillPtr << pt.x() << pt.y();
   }
 
   return 0;
 }
 
-int QgsGmlStreamingParser::getRingWKB( QByteArray &wkbPtr, const QList<QgsPoint> &ringCoordinates, int dimension ) const
+int QgsGmlStreamingParser::getRingWKB( QByteArray &wkbPtr, const QList<QgsPointXY> &ringCoordinates ) const
 {
-  const int wkbSize = static_cast<int>( sizeof( int ) ) + static_cast<int>( ringCoordinates.size() ) * dimension * static_cast<int>( sizeof( double ) );
+  const int wkbSize = static_cast<int>( sizeof( int ) ) + static_cast<int>( ringCoordinates.size() ) * 2 * static_cast<int>( sizeof( double ) );
   wkbPtr = QByteArray( wkbSize, Qt::Uninitialized );
 
   QgsWkbPtr fillPtr( wkbPtr );
 
   fillPtr << ringCoordinates.size();
 
-  QList<QgsPointXY>::const_iterator iter;
-  for ( iter = ringCoordinates.constBegin(); iter != ringCoordinates.constEnd(); ++iter )
+  for ( const QgsPointXY &pt : ringCoordinates )
   {
-    fillPtr << iter->x() << iter->y();
-    if ( dimension > 2 )
-    {
-      fillPtr << iter->z(); // add Z coordinate if available
-    }
+    fillPtr << pt.x() << pt.y();
   }
 
   return 0;
@@ -1835,8 +1821,7 @@ int QgsGmlStreamingParser::createCompoundCurveFromSegments()
 
   mCurrentWKB = QByteArray( size, Qt::Uninitialized );
   QgsWkbPtr wkbPtr( mCurrentWKB );
-  const Qgis::WkbType curveWkbType = mDimension > 2 ? Qgis::WkbType::CompoundCurveZ : Qgis::WkbType::CompoundCurve;
-  wkbPtr << mEndian << curveWkbType << segments.size();
+  wkbPtr << mEndian << Qgis::WkbType::CompoundCurve << segments.size();
 
   for ( const QByteArray &segment : std::as_const( segments ) )
   {
@@ -1844,6 +1829,8 @@ int QgsGmlStreamingParser::createCompoundCurveFromSegments()
     wkbPtr += segment.size();
   }
 
+  mWkbType = Qgis::WkbType::CompoundCurve;
+  mCurveSegments.pop();
   return 0;
 }
 
