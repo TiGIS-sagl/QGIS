@@ -69,6 +69,8 @@ class TestQgsGML : public QObject
     void testLineStringGML3();
     void testLineStringGML3_LineStringSegment();
     void testLineStringGML3_pos();
+    void testCurveGML3_ArcString();
+    void testCurveGML3_MixedSegments();
     void testPolygonGML3();
     void testPolygonGML3_srsDimension_on_Polygon();
     void testPolygonGML3_srsDimension_on_posList();
@@ -673,19 +675,18 @@ void TestQgsGML::testLineStringGML3_LineStringSegment()
                                                "<gml:Curve srsName='EPSG:27700'><gml:segments><gml:LineStringSegment><gml:posList>10 20 30 40</gml:posList></gml:LineStringSegment></gml:segments></gml:Curve>"
                                                "</myns:mygeom>"
                                                "</myns:mytypename>"
-                                               "</gml:featureMember>"
-                                               "</myns:FeatureCollection>" ),
-                                   true ),
-            true );
-  QCOMPARE( gmlParser.wkbType(), Qgis::WkbType::LineString );
+                                                "</gml:featureMember>"
+                                                "</myns:FeatureCollection>" ),
+                                    true ),
+             true );
+  QCOMPARE( gmlParser.wkbType(), Qgis::WkbType::CompoundCurve );
   QVector<QgsGmlStreamingParser::QgsGmlFeaturePtrGmlIdPair> features = gmlParser.getAndStealReadyFeatures();
   QCOMPARE( features.size(), 1 );
   QVERIFY( features[0].first->hasGeometry() );
-  QCOMPARE( features[0].first->geometry().wkbType(), Qgis::WkbType::LineString );
-  QgsPolylineXY line = features[0].first->geometry().asPolyline();
-  QCOMPARE( line.size(), 2 );
-  QCOMPARE( line[0], QgsPointXY( 10, 20 ) );
-  QCOMPARE( line[1], QgsPointXY( 30, 40 ) );
+
+  QCOMPARE( features[0].first->geometry().wkbType(), Qgis::WkbType::CompoundCurve );
+  QCOMPARE( features[0].first->geometry().asWkt().toUpper(), QStringLiteral( "COMPOUNDCURVE ((10 20, 30 40))" ) );
+
   delete features[0].first;
 }
 
@@ -702,19 +703,96 @@ void TestQgsGML::testLineStringGML3_pos()
                                                "<gml:Curve srsName='EPSG:27700'><gml:segments><gml:LineStringSegment><gml:pos>10 20</gml:pos><gml:pos>30 40</gml:pos></gml:LineStringSegment></gml:segments></gml:Curve>"
                                                "</myns:mygeom>"
                                                "</myns:mytypename>"
+                                                "</gml:featureMember>"
+                                                "</myns:FeatureCollection>" ),
+                                    true ),
+             true );
+  QCOMPARE( gmlParser.wkbType(), Qgis::WkbType::CompoundCurve );
+  QVector<QgsGmlStreamingParser::QgsGmlFeaturePtrGmlIdPair> features = gmlParser.getAndStealReadyFeatures();
+  QCOMPARE( features.size(), 1 );
+  QVERIFY( features[0].first->hasGeometry() );
+
+  QCOMPARE( features[0].first->geometry().wkbType(), Qgis::WkbType::CompoundCurve );
+  QCOMPARE( features[0].first->geometry().asWkt().toUpper(), QStringLiteral( "COMPOUNDCURVE ((10 20, 30 40))" ) );
+
+  delete features[0].first;
+}
+
+void TestQgsGML::testCurveGML3_ArcString()
+{
+  const QgsFields fields;
+  QgsGmlStreamingParser gmlParser( u"mytypename"_s, u"mygeom"_s, fields );
+  QCOMPARE( gmlParser.processData( QByteArray( "<myns:FeatureCollection "
+                                               "xmlns:myns='http://myns' "
+                                               "xmlns:gml='http://www.opengis.net/gml'>"
+                                               "<gml:featureMember>"
+                                               "<myns:mytypename fid='mytypename.1'>"
+                                               "<myns:mygeom>"
+                                               "<gml:Curve srsName='EPSG:27700'>"
+                                               "<gml:segments>"
+                                               "<gml:ArcString>"
+                                               "<gml:posList srsDimension='3'>0 0 1 10 10 2 20 0 3</gml:posList>"
+                                               "</gml:ArcString>"
+                                               "</gml:segments>"
+                                               "</gml:Curve>"
+                                               "</myns:mygeom>"
+                                               "</myns:mytypename>"
                                                "</gml:featureMember>"
                                                "</myns:FeatureCollection>" ),
                                    true ),
             true );
-  QCOMPARE( gmlParser.wkbType(), Qgis::WkbType::LineString );
+
+  QCOMPARE( gmlParser.wkbType(), Qgis::WkbType::CompoundCurveZ );
   QVector<QgsGmlStreamingParser::QgsGmlFeaturePtrGmlIdPair> features = gmlParser.getAndStealReadyFeatures();
   QCOMPARE( features.size(), 1 );
   QVERIFY( features[0].first->hasGeometry() );
-  QCOMPARE( features[0].first->geometry().wkbType(), Qgis::WkbType::LineString );
-  QgsPolylineXY line = features[0].first->geometry().asPolyline();
-  QCOMPARE( line.size(), 2 );
-  QCOMPARE( line[0], QgsPointXY( 10, 20 ) );
-  QCOMPARE( line[1], QgsPointXY( 30, 40 ) );
+
+  QCOMPARE( features[0].first->geometry().wkbType(), Qgis::WkbType::CompoundCurveZ );
+  const QString wkt = features[0].first->geometry().asWkt().toUpper();
+  QVERIFY( wkt.startsWith( QStringLiteral( "COMPOUNDCURVE Z" ) ) );
+  QVERIFY( wkt.contains( QStringLiteral( "CIRCULARSTRING" ) ) );
+
+  delete features[0].first;
+}
+
+void TestQgsGML::testCurveGML3_MixedSegments()
+{
+  const QgsFields fields;
+  QgsGmlStreamingParser gmlParser( u"mytypename"_s, u"mygeom"_s, fields );
+  QCOMPARE( gmlParser.processData( QByteArray( "<myns:FeatureCollection "
+                                               "xmlns:myns='http://myns' "
+                                               "xmlns:gml='http://www.opengis.net/gml'>"
+                                               "<gml:featureMember>"
+                                               "<myns:mytypename fid='mytypename.1'>"
+                                               "<myns:mygeom>"
+                                               "<gml:Curve srsName='EPSG:27700'>"
+                                               "<gml:segments>"
+                                               "<gml:LineStringSegment>"
+                                               "<gml:posList>0 0 10 0</gml:posList>"
+                                               "</gml:LineStringSegment>"
+                                               "<gml:ArcString>"
+                                               "<gml:posList>10 0 15 5 20 0</gml:posList>"
+                                               "</gml:ArcString>"
+                                               "</gml:segments>"
+                                               "</gml:Curve>"
+                                               "</myns:mygeom>"
+                                               "</myns:mytypename>"
+                                               "</gml:featureMember>"
+                                               "</myns:FeatureCollection>" ),
+                                   true ),
+            true );
+
+  QCOMPARE( gmlParser.wkbType(), Qgis::WkbType::CompoundCurve );
+  QVector<QgsGmlStreamingParser::QgsGmlFeaturePtrGmlIdPair> features = gmlParser.getAndStealReadyFeatures();
+  QCOMPARE( features.size(), 1 );
+  QVERIFY( features[0].first->hasGeometry() );
+
+  QCOMPARE( features[0].first->geometry().wkbType(), Qgis::WkbType::CompoundCurve );
+  const QString wkt = features[0].first->geometry().asWkt().toUpper();
+  QVERIFY( wkt.startsWith( QStringLiteral( "COMPOUNDCURVE" ) ) );
+  QVERIFY( wkt.contains( QStringLiteral( "CIRCULARSTRING" ) ) );
+  QVERIFY( wkt.contains( QStringLiteral( "0 0, 10 0" ) ) );
+
   delete features[0].first;
 }
 
@@ -1653,12 +1731,12 @@ void TestQgsGML::testZ_data()
   // Note: this is not supported "point with z gml 3 no srsDimension" <gml:Point srsName="EPSG:4326"><gml:pos>0 1 2</gml:pos></gml:Point>
 
   QTest::newRow( "linestring with z gml 2" ) << QStringLiteral( R"gml(<gml:LineString srsName="EPSG:4326"><gml:coordinates>0,1,2 3,4,5</gml:coordinates></gml:LineString>)gml" )
-                                             << static_cast<int>( Qgis::WkbType::LineStringZ )
-                                             << u"LINESTRING Z (0 1 2, 3 4 5)"_s;
+                                              << static_cast<int>( Qgis::WkbType::LineStringZ )
+                                              << u"LINESTRING Z (0 1 2, 3 4 5)"_s;
 
   QTest::newRow( "linestring with z gml 3" ) << QStringLiteral( R"gml(<gml:Curve srsName="EPSG:4326"><gml:segments><gml:LineStringSegment><gml:posList srsDimension="3">0 1 2 3 4 5</gml:posList></gml:LineStringSegment></gml:segments></gml:Curve>)gml" )
-                                             << static_cast<int>( Qgis::WkbType::LineStringZ )
-                                             << u"LINESTRING Z (0 1 2, 3 4 5)"_s;
+                                             << static_cast<int>( Qgis::WkbType::CompoundCurveZ )
+                                             << u"COMPOUNDCURVE Z ((0 1 2, 3 4 5))"_s;
 
   QTest::newRow( "linestring with z gml 3 with implicit srsDimension" ) << QStringLiteral( R"gml(<gml:LineString srsName="EPSG:4979"><gml:posList>0 1 2 3 4 5</gml:posList></gml:LineString>)gml" )
                                                                         << static_cast<int>( Qgis::WkbType::LineStringZ )
