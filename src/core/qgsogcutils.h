@@ -315,6 +315,8 @@ class CORE_EXPORT QgsOgcUtils
     static QgsGeometry geometryFromGMLPoint( const QDomElement &geometryElement );
     //! Static method that creates geometry from GML LineString
     static QgsGeometry geometryFromGMLLineString( const QDomElement &geometryElement );
+    //! Static method that creates geometry from GML Curve
+    static QgsGeometry geometryFromGMLCurve( const QDomElement &geometryElement );
     //! Static method that creates geometry from GML Polygon
     static QgsGeometry geometryFromGMLPolygon( const QDomElement &geometryElement );
     //! Static method that creates geometry from GML MultiPoint

@@ -94,7 +94,7 @@ QgsGeometry QgsOgcUtils::geometryFromGML( const QDomNode &geometryNode, const Co
   QString geomType = geometryTypeElement.tagName();
   QgsGeometry geometry;
 
-  if ( !( geomType == "Point"_L1 || geomType == "LineString"_L1 || geomType == "Polygon"_L1 ||
+  if ( !( geomType == "Point"_L1 || geomType == "LineString"_L1 || geomType == "Curve"_L1 || geomType == "Polygon"_L1 ||
           geomType == "MultiPoint"_L1 || geomType == "MultiLineString"_L1 || geomType == "MultiPolygon"_L1 ||
           geomType == "Box"_L1 || geomType == "Envelope"_L1 || geomType == "MultiCurve"_L1 ) )
   {
@@ -107,7 +107,7 @@ QgsGeometry QgsOgcUtils::geometryFromGML( const QDomNode &geometryNode, const Co
     geomType = geometryTypeElement.tagName();
   }
 
-  if ( !( geomType == "Point"_L1 || geomType == "LineString"_L1 || geomType == "Polygon"_L1 ||
+  if ( !( geomType == "Point"_L1 || geomType == "LineString"_L1 || geomType == "Curve"_L1 || geomType == "Polygon"_L1 ||
           geomType == "MultiPoint"_L1 || geomType == "MultiLineString"_L1 || geomType == "MultiPolygon"_L1 ||
           geomType == "Box"_L1 || geomType == "Envelope"_L1  || geomType == "MultiCurve"_L1 ) )
     return QgsGeometry();
@@ -119,6 +119,10 @@ QgsGeometry QgsOgcUtils::geometryFromGML( const QDomNode &geometryNode, const Co
   else if ( geomType == "LineString"_L1 )
   {
     geometry = geometryFromGMLLineString( geometryTypeElement );
+  }
+  else if ( geomType == "Curve"_L1 )
+  {
+    geometry = geometryFromGMLCurve( geometryTypeElement );
   }
   else if ( geomType == "Polygon"_L1 )
   {
@@ -345,6 +349,198 @@ QgsGeometry QgsOgcUtils::geometryFromGMLLineString( const QDomElement &geometryE
 
   QgsGeometry g;
   g.fromWkb( wkb, size );
+  return g;
+}
+
+QgsGeometry QgsOgcUtils::geometryFromGMLCurve( const QDomElement &geometryElement )
+{
+  const QDomNodeList segmentsList = geometryElement.elementsByTagNameNS( GML_NAMESPACE, u"segments"_s );
+  if ( segmentsList.isEmpty() )
+  {
+    return QgsGeometry();
+  }
+
+  const QDomElement segmentsElement = segmentsList.at( 0 ).toElement();
+
+  QList<QByteArray> segmentWkbs;
+  bool firstSegment = true;
+  bool hasZCurve = false;
+
+  for ( QDomNode child = segmentsElement.firstChild(); !child.isNull(); child = child.nextSibling() )
+  {
+    if ( !child.isElement() )
+      continue;
+
+    const QDomElement segmentElement = child.toElement();
+
+    QString segmentType = segmentElement.localName();
+    if ( segmentType.isEmpty() )
+      segmentType = segmentElement.tagName();
+
+    QgsPolyline segmentCoordinates;
+    Qgis::WkbType segmentWkbType = Qgis::WkbType::Unknown;
+
+    if ( segmentType == "LineStringSegment"_L1 )
+    {
+      const QDomNodeList coordList = segmentElement.elementsByTagNameNS( GML_NAMESPACE, u"coordinates"_s );
+      if ( !coordList.isEmpty() )
+      {
+        const QDomElement coordElement = coordList.at( 0 ).toElement();
+        if ( readGMLCoordinates( segmentCoordinates, coordElement ) != 0 )
+        {
+          return QgsGeometry();
+        }
+      }
+      else
+      {
+        const QDomNodeList posList = segmentElement.elementsByTagNameNS( GML_NAMESPACE, u"posList"_s );
+        if ( !posList.isEmpty() )
+        {
+          const QDomElement posListElement = posList.at( 0 ).toElement();
+          if ( readGMLPositions( segmentCoordinates, posListElement ) != 0 )
+          {
+            return QgsGeometry();
+          }
+        }
+        else
+        {
+          const QDomNodeList posElements = segmentElement.elementsByTagNameNS( GML_NAMESPACE, u"pos"_s );
+          if ( posElements.isEmpty() )
+          {
+            return QgsGeometry();
+          }
+
+          for ( int i = 0; i < posElements.size(); ++i )
+          {
+            QgsPolyline tmp;
+            const QDomElement posElement = posElements.at( i ).toElement();
+            if ( readGMLPositions( tmp, posElement ) != 0 || tmp.size() != 1 )
+            {
+              return QgsGeometry();
+            }
+
+            segmentCoordinates.append( tmp.at( 0 ) );
+          }
+        }
+      }
+    }
+    else if ( segmentType == "ArcString"_L1 )
+    {
+      const QDomNodeList coordList = segmentElement.elementsByTagNameNS( GML_NAMESPACE, u"coordinates"_s );
+      if ( !coordList.isEmpty() )
+      {
+        return QgsGeometry();
+      }
+
+      const QDomNodeList posList = segmentElement.elementsByTagNameNS( GML_NAMESPACE, u"posList"_s );
+      if ( posList.isEmpty() )
+      {
+        return QgsGeometry();
+      }
+
+      const QDomElement posListElement = posList.at( 0 ).toElement();
+      if ( readGMLPositions( segmentCoordinates, posListElement ) != 0 )
+      {
+        return QgsGeometry();
+      }
+    }
+    else
+    {
+      return QgsGeometry();
+    }
+
+    if ( segmentCoordinates.empty() )
+    {
+      return QgsGeometry();
+    }
+
+    const bool hasZSegment = !std::isnan( segmentCoordinates.first().z() );
+    if ( firstSegment )
+    {
+      hasZCurve = hasZSegment;
+      firstSegment = false;
+    }
+    else if ( hasZCurve != hasZSegment )
+    {
+      return QgsGeometry();
+    }
+
+    if ( segmentType == "LineStringSegment"_L1 )
+    {
+      segmentWkbType = hasZCurve ? Qgis::WkbType::LineStringZ : Qgis::WkbType::LineString;
+    }
+    else if ( segmentType == "ArcString"_L1 )
+    {
+      segmentWkbType = hasZCurve ? Qgis::WkbType::CircularStringZ : Qgis::WkbType::CircularString;
+    }
+
+    const int nPoints = segmentCoordinates.size();
+    const int coordSize = hasZCurve ? 3 : 2;
+    const int segmentSize = 1 + 2 * static_cast<int>( sizeof( int ) ) + nPoints * coordSize * static_cast<int>( sizeof( double ) );
+    QByteArray segmentWkb;
+    segmentWkb.resize( segmentSize );
+
+    int wkbPosition = 0;
+    const char e = static_cast<char>( htonl( 1 ) != 1 );
+    memcpy( segmentWkb.data() + wkbPosition, &e, 1 );
+    wkbPosition += 1;
+    memcpy( segmentWkb.data() + wkbPosition, &segmentWkbType, sizeof( int ) );
+    wkbPosition += sizeof( int );
+    memcpy( segmentWkb.data() + wkbPosition, &nPoints, sizeof( int ) );
+    wkbPosition += sizeof( int );
+
+    for ( QgsPolyline::const_iterator it = segmentCoordinates.constBegin(); it != segmentCoordinates.constEnd(); ++it )
+    {
+      const double x = it->x();
+      const double y = it->y();
+      memcpy( segmentWkb.data() + wkbPosition, &x, sizeof( double ) );
+      wkbPosition += sizeof( double );
+      memcpy( segmentWkb.data() + wkbPosition, &y, sizeof( double ) );
+      wkbPosition += sizeof( double );
+
+      if ( hasZCurve )
+      {
+        const double z = it->z();
+        memcpy( segmentWkb.data() + wkbPosition, &z, sizeof( double ) );
+        wkbPosition += sizeof( double );
+      }
+    }
+
+    segmentWkbs.append( segmentWkb );
+  }
+
+  if ( segmentWkbs.isEmpty() )
+  {
+    return QgsGeometry();
+  }
+
+  const Qgis::WkbType curveType = hasZCurve ? Qgis::WkbType::CompoundCurveZ : Qgis::WkbType::CompoundCurve;
+  const int nSegments = segmentWkbs.size();
+
+  int curveSize = 1 + 2 * static_cast<int>( sizeof( int ) );
+  for ( const QByteArray &segmentWkb : std::as_const( segmentWkbs ) )
+  {
+    curveSize += segmentWkb.size();
+  }
+
+  unsigned char *wkb = new unsigned char[curveSize];
+  int wkbPosition = 0;
+  const char e = static_cast<char>( htonl( 1 ) != 1 );
+  memcpy( &( wkb )[wkbPosition], &e, 1 );
+  wkbPosition += 1;
+  memcpy( &( wkb )[wkbPosition], &curveType, sizeof( int ) );
+  wkbPosition += sizeof( int );
+  memcpy( &( wkb )[wkbPosition], &nSegments, sizeof( int ) );
+  wkbPosition += sizeof( int );
+
+  for ( const QByteArray &segmentWkb : std::as_const( segmentWkbs ) )
+  {
+    memcpy( &( wkb )[wkbPosition], segmentWkb.constData(), segmentWkb.size() );
+    wkbPosition += segmentWkb.size();
+  }
+
+  QgsGeometry g;
+  g.fromWkb( wkb, curveSize );
   return g;
 }
 
