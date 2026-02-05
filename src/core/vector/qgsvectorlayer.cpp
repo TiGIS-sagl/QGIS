@@ -6285,7 +6285,7 @@ bool QgsVectorLayer::setDependencies( const QSet<QgsMapLayerDependency> &oDeps )
       connect( lyr, &QgsVectorLayer::geometryChanged, this, &QgsVectorLayer::emitDataChanged );
       connect( lyr, &QgsVectorLayer::dataChanged, this, &QgsVectorLayer::emitDataChanged );
       connect( lyr, &QgsVectorLayer::repaintRequested, this, &QgsVectorLayer::triggerRepaint );
-      if ( providerType() == "WFS"_L1 || providerType() == "OAPIF"_L1 )
+      if ( providerType() == QStringLiteral("WFS") || providerType() == QStringLiteral("OAPIF") )
         connect( lyr, &QgsVectorLayer::afterCommitChanges, this, &QgsVectorLayer::reload );
       else
         connect( lyr, &QgsVectorLayer::afterCommitChanges, this, &QgsVectorLayer::emitDataChanged );
