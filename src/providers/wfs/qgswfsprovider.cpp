@@ -147,9 +147,7 @@ QgsWFSProvider::QgsWFSProvider( const QString &uri, const ProviderOptions &optio
       mValid = false;
       return;
     }
-    if ( mShared->mWKBType == Qgis::WkbType::CompoundCurve
-         || mShared->mWKBType == Qgis::WkbType::CircularString
-         || mShared->mWKBType == Qgis::WkbType::CurvePolygon )
+    if ( mShared->mWKBType == Qgis::WkbType::CompoundCurve || mShared->mWKBType == Qgis::WkbType::CircularString || mShared->mWKBType == Qgis::WkbType::CurvePolygon )
       mCapabilities |= Qgis::VectorProviderCapability::CircularGeometries;
     mThisTypenameFields = mShared->mFields;
     mLayerPropertiesListWhenNoSqlRequest = mShared->mLayerPropertiesList;
@@ -165,9 +163,7 @@ QgsWFSProvider::QgsWFSProvider( const QString &uri, const ProviderOptions &optio
   if ( mShared->mWKBType == Qgis::WkbType::Unknown && mShared->mURI.hasGeometryTypeFilter() && mShared->mCaps.supportsGeometryTypeFilters() )
   {
     mShared->mWKBType = mShared->mURI.geometryTypeFilter();
-    if ( mShared->mWKBType == Qgis::WkbType::CompoundCurve
-         || mShared->mWKBType == Qgis::WkbType::CircularString
-         || mShared->mWKBType == Qgis::WkbType::CurvePolygon )
+    if ( mShared->mWKBType == Qgis::WkbType::CompoundCurve || mShared->mWKBType == Qgis::WkbType::CircularString || mShared->mWKBType == Qgis::WkbType::CurvePolygon )
       mCapabilities |= Qgis::VectorProviderCapability::CircularGeometries;
     if ( mShared->mWKBType != Qgis::WkbType::Unknown )
     {
@@ -641,9 +637,7 @@ bool QgsWFSProvider::processSQL( const QString &sqlString, QString &errorMsg, QS
     {
       mShared->mGeometryAttribute = geometryAttribute;
       mShared->mWKBType = geomType;
-      if ( mShared->mWKBType == Qgis::WkbType::CompoundCurve
-           || mShared->mWKBType == Qgis::WkbType::CircularString
-           || mShared->mWKBType == Qgis::WkbType::CurvePolygon )
+      if ( mShared->mWKBType == Qgis::WkbType::CompoundCurve || mShared->mWKBType == Qgis::WkbType::CircularString || mShared->mWKBType == Qgis::WkbType::CurvePolygon )
         mCapabilities |= Qgis::VectorProviderCapability::CircularGeometries;
       mGeometryMaybeMissing = geometryMaybeMissing;
       mThisTypenameFields = fields;
@@ -918,9 +912,7 @@ void QgsWFSProvider::featureReceivedAnalyzeOneFeature( const QVector<QgsFeatureU
           }
         }
       }
-      if ( mShared->mWKBType == Qgis::WkbType::CompoundCurve
-           || mShared->mWKBType == Qgis::WkbType::CircularString
-           || mShared->mWKBType == Qgis::WkbType::CurvePolygon )
+      if ( mShared->mWKBType == Qgis::WkbType::CompoundCurve || mShared->mWKBType == Qgis::WkbType::CircularString || mShared->mWKBType == Qgis::WkbType::CurvePolygon )
         mCapabilities |= Qgis::VectorProviderCapability::CircularGeometries;
     }
   }
@@ -1119,6 +1111,7 @@ bool QgsWFSProvider::addFeatures( QgsFeatureList &flist, Flags flags )
   tname = QgsWFSUtils::removeNamespacePrefix( tname );
 
   //Add the features
+  const bool useExistingId = mShared->mWFSVersion.startsWith( "1.0"_L1 ) || mShared->mWFSVersion.startsWith( "1.1"_L1 );
   QgsFeatureList::iterator featureIt = flist.begin();
   for ( ; featureIt != flist.end(); ++featureIt )
   {
@@ -1129,6 +1122,18 @@ bool QgsWFSProvider::addFeatures( QgsFeatureList &flist, Flags flags )
     QDomElement featureElem = transactionDoc.createElementNS( mShared->mApplicationNamespace, tname );
 
     QgsAttributes featureAttributes = featureIt->attributes();
+
+    if ( useExistingId && !mShared->mFields.isEmpty() && !featureAttributes.isEmpty() )
+    {
+      const QVariant &idValue = featureAttributes.at( 0 );
+      if ( idValue.isValid() && !QgsVariantUtils::isNull( idValue ) )
+      {
+        const QString gmlid = u"%1.%2"_s.arg( tname, idValue.toString() );
+        featureElem.setAttribute( "fid"_L1, gmlid );
+        insertElem.setAttribute( "idgen"_L1, "UseExisting"_L1 );
+      }
+    }
+
     int nAttrs = featureAttributes.size();
     for ( int i = 0; i < nAttrs; ++i )
     {
@@ -1907,9 +1912,7 @@ bool QgsWFSProvider::getCapabilities()
     }
   }
 
-  if ( mShared->mWKBType == Qgis::WkbType::CompoundCurve
-       || mShared->mWKBType == Qgis::WkbType::CircularString
-       || mShared->mWKBType == Qgis::WkbType::CurvePolygon )
+  if ( mShared->mWKBType == Qgis::WkbType::CompoundCurve || mShared->mWKBType == Qgis::WkbType::CircularString || mShared->mWKBType == Qgis::WkbType::CurvePolygon )
     mCapabilities |= Qgis::VectorProviderCapability::CircularGeometries;
 
   if ( !foundLayer )
