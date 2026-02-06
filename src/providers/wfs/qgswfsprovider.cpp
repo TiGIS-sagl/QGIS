@@ -1095,6 +1095,7 @@ bool QgsWFSProvider::addFeatures( QgsFeatureList &flist, Flags flags )
   tname = QgsWFSUtils::removeNamespacePrefix( tname );
 
   //Add the features
+  const bool useExistingId = mShared->mWFSVersion.startsWith( QStringLiteral( "1.0" ) ) || mShared->mWFSVersion.startsWith( QStringLiteral( "1.1" ) );
   QgsFeatureList::iterator featureIt = flist.begin();
   for ( ; featureIt != flist.end(); ++featureIt )
   {
@@ -1102,9 +1103,19 @@ bool QgsWFSProvider::addFeatures( QgsFeatureList &flist, Flags flags )
     QDomElement insertElem = transactionDoc.createElementNS( QgsWFSConstants::WFS_NAMESPACE, QStringLiteral( "Insert" ) );
     transactionElem.appendChild( insertElem );
 
-    QDomElement featureElem = transactionDoc.createElementNS( mApplicationNamespace, tname );
-
     QgsAttributes featureAttributes = featureIt->attributes();
+    QDomElement featureElem = transactionDoc.createElementNS( mApplicationNamespace, tname );
+    if ( useExistingId && !mShared->mFields.isEmpty() && !featureAttributes.isEmpty() )
+    {
+      const QVariant &idValue = featureAttributes.at( 0 );
+      if ( idValue.isValid() && !QgsVariantUtils::isNull( idValue ) )
+      {
+        const QString gmlid = QStringLiteral( "%1.%2" ).arg( tname, idValue.toString() );
+        featureElem.setAttribute( QStringLiteral( "fid" ), gmlid );
+        insertElem.setAttribute( QStringLiteral( "idgen" ), QStringLiteral( "UseExisting" ) );
+      }
+    }
+
     int nAttrs = featureAttributes.size();
     for ( int i = 0; i < nAttrs; ++i )
     {
