@@ -78,7 +78,6 @@ dnf install -y --nogpgcheck \
   make \
   proj-devel \
   python-devel \
-  python3-networkx \
   python-qt5 \
   python3-qscintilla-qt5 \
   qt5-linguist \
@@ -87,23 +86,3 @@ dnf install -y --nogpgcheck \
   wget \
   xorg-x11-server-Xvfb \
   zip
-
-# networkx is not available as a mingw64-python3-* Fedora package.
-# Install the host package and copy it into the MinGW sysroot so it gets
-# bundled by ms-windows/mingw/build.sh.
-pyver=$(mingw64-python3 -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')")
-
-# Fedora installs python3-networkx under /usr/lib/... but the default python3
-# inside containers may be /usr/local/... (e.g. if layered by other images).
-# Find the real install location via rpm.
-host_purelib=$(rpm -ql python3-networkx | awk '/\/networkx\/__init__\.py$/ { sub(/\/networkx\/__init__\.py$/, ""); print; exit }')
-if [ -z "$host_purelib" ]; then
-  host_purelib=$(python3 -c "import os, networkx; print(os.path.dirname(os.path.dirname(networkx.__file__)))")
-fi
-
-dest="/usr/x86_64-w64-mingw32/sys-root/mingw/lib/python${pyver}/site-packages"
-mkdir -p "$dest"
-cp -a "$host_purelib/networkx" "$dest/"
-for d in "$host_purelib"/networkx-*.dist-info; do
-  [ -e "$d" ] && cp -a "$d" "$dest/"
-done

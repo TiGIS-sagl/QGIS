@@ -41,10 +41,10 @@ fi
 MINGWROOT=/usr/$arch-w64-mingw32/sys-root/mingw
 
 if $DEBUG; then
-  optflags="-O0 -g1 -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions --param=ssp-buffer-size=4 -fno-omit-frame-pointer -mcmodel=medium"
+  optflags="-O0 -g1 -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions --param=ssp-buffer-size=4 -fno-omit-frame-pointer"
   buildtype="Debug"
 else
-  optflags="-O2 -g1 -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions --param=ssp-buffer-size=4 -fno-omit-frame-pointer -mcmodel=medium"
+  optflags="-O2 -g1 -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions --param=ssp-buffer-size=4 -fno-omit-frame-pointer"
   buildtype="RelWithDebugInfo"
 fi
 pyver=$(mingw${bits}-python3 -c "import sys; print('.'.join(list(map(str, sys.version_info))[0:2]))")
@@ -83,9 +83,6 @@ mkdir -p "$BUILDDIR"
     -DCMAKE_CROSS_COMPILING=1 \
     -DUSE_CCACHE=ON \
     -DCMAKE_BUILD_TYPE=$buildtype \
-    -DCMAKE_EXE_LINKER_FLAGS="-Wl,--disable-high-entropy-va -Wl,--image-base,0x10000000" \
-    -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--disable-high-entropy-va -Wl,--image-base,0x180000000" \
-    -DCMAKE_MODULE_LINKER_FLAGS="-Wl,--disable-high-entropy-va -Wl,--image-base,0x180000000" \
     -DNATIVE_CRSSYNC_BIN="$CRSSYNC_BIN" \
     -DNATIVE_Python_EXECUTABLE=python3 \
     -DBUILD_TESTING=OFF \
@@ -105,8 +102,8 @@ mkdir -p "$BUILDDIR"
     -DWITH_DRACO=OFF \
     -DWITH_PDAL=OFF \
     -DWITH_QUICK=ON \
-    -DWITH_SERVER=OFF \
-    -DWITH_SERVER_LANDINGPAGE_WEBAPP=OFF \
+    -DWITH_SERVER=ON \
+    -DWITH_SERVER_LANDINGPAGE_WEBAPP=ON \
     -DTXT2TAGS_EXECUTABLE= \
     ..
 )
@@ -132,10 +129,6 @@ echo "::endgroup::"
 echo "::group::install"
 mingw$bits-make -C"$BUILDDIR" -j"$njobs" DESTDIR="${installroot}" install # VERBOSE=1
 echo "::endgroup::"
-
-# Install a Windows launcher next to qgis.exe
-mkdir -p "$installprefix/bin"
-lnk "$SRCDIR/ms-windows/mingw/qgis.bat" "$installprefix/bin/qgis.bat"
 
 #echo "ccache statistics"
 echo "::group::ccache stats"

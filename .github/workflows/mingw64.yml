@@ -4,22 +4,22 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-#on:
-#  push:
-#    branches:
-#      - master
-#      - release-**
-#      - queued_ltr_backports
-#    paths:
-#    - 'src/**'
-#    - 'external/**'
-#    - 'python/**'
-#    - 'tests/**'
-#    - 'ms-windows/**'
-#    - 'CMakeLists.txt'
-#    - '.github/workflows/mingw64.yml'
-#  pull_request:
-#  workflow_dispatch:
+on:
+  push:
+    branches:
+      - master
+      - release-**
+      - queued_ltr_backports
+    paths:
+    - 'src/**'
+    - 'external/**'
+    - 'python/**'
+    - 'tests/**'
+    - 'ms-windows/**'
+    - 'CMakeLists.txt'
+    - '.github/workflows/mingw64.yml'
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -34,6 +34,7 @@ jobs:
       volumes:
         - ${{ github.workspace }}:/w
     steps:
+
       - uses: actions/checkout@v4
 
       # To be removed
@@ -54,7 +55,7 @@ jobs:
       # Node.js and Yarn for server landingpage webapp
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: '22'
 
       - name: Make yarn available
         run: corepack enable
