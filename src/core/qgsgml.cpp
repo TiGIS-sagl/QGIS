@@ -1350,7 +1350,7 @@ void QgsGmlStreamingParser::endElement( const XML_Char *el )
     }
     else
     {
-      QgsDebugError( u"No curve segments container"_s );
+      QgsDebugError( QStringLiteral( "No curve segments container" ) );
     }
   }
   else if ( parseMode == Curve && isGMLNS && LOCALNAME_EQUALS( "ArcString" ) )
@@ -1376,14 +1376,14 @@ void QgsGmlStreamingParser::endElement( const XML_Char *el )
     }
     else
     {
-      QgsDebugError( u"No curve segments container"_s );
+      QgsDebugError( QStringLiteral( "No curve segments container" ) );
     }
   }
   else if ( parseMode == Curve && isGMLNS && LOCALNAME_EQUALS( "Curve" ) )
   {
     if ( mCurveSegments.isEmpty() )
     {
-      QgsDebugError( u"No curve segments to assemble"_s );
+      QgsDebugError( QStringLiteral( "No curve segments to assemble" ) );
       mParseModeStack.pop();
     }
     else
