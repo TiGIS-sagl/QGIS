@@ -2538,8 +2538,10 @@ QDomElement QgsOgcUtils::SQLStatementToOgcFilter(
     return Qgis::WkbType::LineString;
   if ( gmlGeomType == "Curve"_L1 )
     return Qgis::WkbType::CompoundCurve;
-  if ( gmlGeomType == "Polygon"_L1 || gmlGeomType == "Surface"_L1 )
+  if ( gmlGeomType == "Polygon"_L1 )
     return Qgis::WkbType::Polygon;
+  if ( gmlGeomType == "Surface"_L1 )
+    return Qgis::WkbType::CurvePolygon;
   if ( gmlGeomType == "MultiPoint"_L1 )
     return Qgis::WkbType::MultiPoint;
   if ( gmlGeomType == "MultiLineString"_L1 || gmlGeomType == "MultiCurve"_L1 )
