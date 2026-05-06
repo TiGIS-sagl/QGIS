@@ -24,7 +24,7 @@ jobs:
             deployment-target: "10.15"
             osx-architecture: "x86_64"
           - os: macos-14
-            triplet: arm64-osx-dynamic-release
+            triplet: blacksmith-4vcpu-ubuntu-2404-arm
             deployment-target: "11.0"
             osx-architecture: "arm64"
     name: build (macos)
@@ -150,7 +150,7 @@ jobs:
 
   schedule_download_comment:
     name: Create dmg
-    runs-on: macos-latest
+    runs-on: blacksmith-6vcpu-macos-15
     needs: build
     steps:
       - name: 🐣 Checkout

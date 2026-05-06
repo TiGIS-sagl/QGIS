@@ -20,7 +20,7 @@ env:
 
 jobs:
   documentation_checks:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -45,7 +45,7 @@ jobs:
         run: cd build && ctest -V -R PyQgsDocCoverage
 
   license_check:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -59,7 +59,7 @@ jobs:
         run: ./tests/code_layout/test_licenses.sh
 
   shell_check:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -72,7 +72,7 @@ jobs:
         run: ./tests/code_layout/test_shellcheck.sh
 
   banned_keywords_check:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -80,7 +80,7 @@ jobs:
         run: ./tests/code_layout/test_banned_keywords.sh
 
   class_name_check:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -88,7 +88,7 @@ jobs:
         run: ./tests/code_layout/test_class_names.sh
 
   def_window_title_check:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -96,7 +96,7 @@ jobs:
         run: ./tests/code_layout/test_defwindowtitle.sh
 
   qgsscrollarea_check:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -104,7 +104,7 @@ jobs:
         run: ./tests/code_layout/test_qgsscrollarea.sh
 
   qvariant_no_brace_init:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -112,7 +112,7 @@ jobs:
         run: ./tests/code_layout/test_qvariant_no_brace_init.sh
 
   qt_module_wide_imports:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -120,7 +120,7 @@ jobs:
         run: ./tests/code_layout/test_qt_imports.sh
 
   doxygen_layout_check:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -134,7 +134,7 @@ jobs:
 
   indentation_check:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -150,7 +150,7 @@ jobs:
         run: ./scripts/verify_indentation.sh HEAD~1
 
   spell_check:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -174,7 +174,7 @@ jobs:
         run: ./scripts/spell_check/check_spelling.sh
 
   sip_check:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -194,7 +194,7 @@ jobs:
         run: ./tests/code_layout/sipify/test_sipfiles.sh
 
   cppcheck:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -207,7 +207,7 @@ jobs:
         run: ./scripts/cppcheck.sh
 
   moc_check:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         uses: actions/checkout@v5

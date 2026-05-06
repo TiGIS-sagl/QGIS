@@ -20,7 +20,7 @@ jobs:
       issues: write  # for peter-evans/create-or-update-comment to create or update comment
       pull-requests: write  # for peter-evans/create-or-update-comment to create or update comment
     if: github.event.action != 'closed'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     name: Write comment to ping author about the pull request description
     steps:
 
@@ -88,7 +88,7 @@ jobs:
 
   create-doc-issue:
     if: github.event.pull_request.merged && ( ( github.event.action == 'closed' && contains( github.event.pull_request.labels.*.name, 'Needs Documentation') ) || github.event.label.name == 'Needs Documentation' )
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     name: Create issue on doc repo for labeled issue
     steps:
 

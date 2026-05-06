@@ -11,7 +11,7 @@ jobs:
       issues: write  # for actions-ecosystem/action-remove-labels to remove issue labels
       pull-requests: write  # for actions-ecosystem/action-remove-labels to remove PR labels
     if: contains(github.event.issue.labels.*.name, 'stale')
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions-ecosystem/action-remove-labels@v1
         if: ${{ github.event.comment.user.url != 'https://github.com/apps/github-actions' }}

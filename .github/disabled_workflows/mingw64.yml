@@ -27,7 +27,7 @@ permissions:
 jobs:
   mingw64-build:
     name: MinGW64 Windows Build
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     container:
       image: fedora:40
       options: --security-opt seccomp=unconfined
