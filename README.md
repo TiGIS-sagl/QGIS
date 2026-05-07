@@ -1,3 +1,13 @@
+## QGIS fork with curve support for WFS provider
+
+In this fork there are a couple of changes that can't be merged in the main project to allow the insert and update of some curved geometries while using the WFS. This fork of QGIS has been made to improve the compatibility with geoserver.
+
+### Added features
+- This version of QGIS is able to insert and update circular string, compound curve and curve polygon. QGIS recognise all the layer with che geom type circular string, compound curve and curve polygon when these types are setted in geoserver.
+- If there is a column called tg_id QGIS will use it to read the ID from that column allowing QGIS to insert IDs into the db from WFS. This is usefull to avoid the cache having a different ID from the one inserted in the actual db.
+- There is a backport of a PR to fix broken dependencies that are not working in QGIS 3.44, meaning that if you set the dependency between layer in QGIS 3.44 is not workging.
+- Icos have a yellow color to allow the user to differenciate this QGIS from the original one.
+
 <img src="images/README-md/main_logo.png" width="300">
 
 [![🧪 QGIS tests](https://github.com/qgis/QGIS/actions/workflows/run-tests.yml/badge.svg)](https://github.com/qgis/QGIS/actions/workflows/run-tests.yml?query=branch%3Amaster+event%3Apush)
