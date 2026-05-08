@@ -2,11 +2,13 @@
 
 ## Prerequisites
 
-- Visual Studio 2022 (with "Desktop Development with C++")
-- CMake 3.31+
-- Pre-built vcpkg SDK
-- winflexbison 2.5.25
-- **Ninja** — optional but recommended for command-line builds
+Download and install the following tools (the links point to the same sources used in the official QGIS build documentation):
+
+- [Visual Studio 2022 Community Edition](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community&channel=Release&version=VS2022) — select **"Desktop Development with C++"**
+- [CMake](https://github.com/Kitware/CMake/releases/download/v3.31.4/cmake-3.31.4-windows-x86_64.msi) 3.31+ (or newer from the [GitHub releases page](https://github.com/Kitware/CMake/releases))
+- [winflexbison](https://github.com/lexxmark/winflexbison/releases) — download the latest release and extract it to your working folder
+- [Ninja](https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip) — optional but recommended for command-line builds; just extract `ninja.exe` somewhere in your `PATH`
+- [Pre-built vcpkg SDK](https://nightly.link/qgis/QGIS/workflows/windows-qt6/master/qgis-sdk-x64-windows.zip) — the latest QGIS master SDK
 
 > **Where to place the tools**
 >
@@ -208,9 +210,46 @@ C:\QGIS-dev\QGIS\build-ninja\output\bin\qgis.exe
 C:\QGIS-dev\QGIS\build\output\bin\qgis.exe
 ```
 
+## Optional — Add extra Python packages to the bundle
+
+> **This step is optional.** Do it only if you need additional Python packages (e.g. `networkx`, `scipy`, `pandas`, etc.) inside the bundled QGIS.
+
+When CPack creates the installer, it copies the Python interpreter **directly from the vcpkg SDK** (`SDK_PATH/tools/python3/`), not from your local `output/` folder. Therefore, any extra package must be installed **into the SDK's Python** before you run `cmake --install` or the `bundle` target.
+
+```powershell
+# 1. Locate the Python interpreter inside the vcpkg SDK
+$py = "C:\QGIS-dev\vcpkg-sdk\tools\python3\python.exe"
+
+# 2. Fix pip if it is broken (resolvelib/packaging errors are common in the SDK build)
+Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "$env:TEMP\get-pip.py"
+& $py "$env:TEMP\get-pip.py" --force-reinstall
+
+# 3. Install the package(s) you need
+& $py -m pip install networkx==3.3
+```
+
+After installing the packages into the SDK, propagate them to your local `output/` directory by running `cmake --install` again:
+
+```powershell
+# Ninja:
+cmake --install build-ninja
+
+# Visual Studio:
+cmake --install build --config Release
+```
+
+Now the extra packages are present both in the SDK and in your local build, and they will be included when you create the bundle.
+
 ## Build + Bundle (requires NSIS)
 
-To also produce the installer/package, install [NSIS](https://nsis.sourceforge.net) first, then run:
+To produce the installer/package:
+
+1. **Install NSIS** from https://nsis.sourceforge.io/Download.
+2. **Make sure `makensis.exe` is on your PATH.** Verify with:
+   ```powershell
+   Get-Command makensis
+   ```
+3. **Run the bundle target:**
 
 ```powershell
 # Ninja:
@@ -220,7 +259,7 @@ cmake --build build-ninja --target bundle
 cmake --build build --target bundle --config Release
 ```
 
-The `bundle` target builds all of QGIS and produces a package in the build directory.
+The `bundle` target builds all of QGIS and produces a package (`.zip` / `.exe`) in the build directory.
 
 ## Notes
 
