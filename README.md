@@ -1,12 +1,16 @@
 ## QGIS fork with curve support for WFS provider
 
-In this fork there are a couple of changes that can't be merged in the main project to allow the insert and update of some curved geometries while using the WFS. This fork of QGIS has been made to improve the compatibility with geoserver.
+This repository is based on upstream QGIS and contains targeted changes to achieve better compatibility with GeoServer for the creation and visualization of curved geometries (at least those covered by the added serialization), to fix a dependency bug between WFS layers, and to support inserts with explicit IDs.
 
 ### Added features
-- This version of QGIS is able to insert and update circular string, compound curve and curve polygon. QGIS recognise all the layer with che geom type circular string, compound curve and curve polygon when these types are setted in geoserver.
-- If there is a column called tg_id QGIS will use it to read the ID from that column allowing QGIS to insert IDs into the db from WFS. This is usefull to avoid the cache having a different ID from the one inserted in the actual db.
-- There is a backport of a PR to fix broken dependencies that are not working in QGIS 3.44, meaning that if you set the dependency between layer in QGIS 3.44 is not workging.
-- Icos have a yellow color to allow the user to differenciate this QGIS from the original one.
+
+- **Curved geometry support in WFS provider and GML serialization** — the WFS provider now advertises the `CircularGeometries` capability for `CompoundCurve`, `CircularString` and `CurvePolygon` types (including Z variants). `QgsOgcUtils::geometryToGML` has been extended to correctly serialize these geometries as GML 3 (`gml:Curve`, `gml:ArcString`, `gml:LineStringSegment`, and `gml:Polygon` with curved rings).
+
+- **Improved ID handling in WFS Insert transactions** — for WFS 1.0 and 1.1 services, during `Insert` operations, if the feature already has a valid identifier (the first attribute, corresponding to the `tg_id` column), the transaction sets the `fid` attribute and the `idgen="UseExisting"` parameter. This preserves the original IDs instead of letting the server generate new ones. It is necessary because, when a feature is created in the local SQLite cache, it receives a temporary ID that differs from the database ID. If that feature is later referenced elsewhere (e.g. by relations or dependent layers), using the cached temporary ID would result in broken references. By sending the existing ID with `UseExisting`, the feature keeps the same identifier on the server and in the cache, ensuring consistency across the project.
+
+- **New `CacheData` capability for providers with SQLite caching** — a `CacheData` flag has been added to `VectorProviderCapability` as a backport from QGIS 4.2. It fixes a bug introduced in QGIS 3.44 (not present in 3.40) that broke the ability to use dependencies between two WFS layers. WFS and OAPIF providers expose this flag when the data source uses local caching. `QgsVectorLayer` uses it to force a provider data reload when a dependent layer commits its changes, ensuring data consistency rather than merely emitting the `dataChanged` signal.
+
+- **Custom icons** — application icons (`images/icons/` and `platform/windows/rc/qgis.ico`) have been modified to a yellow color to allow the user to differentiate this QGIS from the original one.
 
 <img src="images/README-md/main_logo.png" width="300">
 
