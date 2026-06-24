@@ -792,6 +792,11 @@ void QgsDualView::previewExpressionBuilder()
 
 void QgsDualView::previewColumnChanged( QAction *previewAction, const QString &expression )
 {
+  // The COALESCE-wrapped expression is only for display in the feature list
+  // view (to show '<NULL>' for null values). Block displayExpressionChanged so
+  // it is not persisted on the layer, which would replace the original field
+  // and break displayField() (it only recognizes a simple field reference).
+  QSignalBlocker blocker( mFeatureListView );
   if ( !mFeatureListView->setDisplayExpression( u"COALESCE( \"%1\", '<NULL>' )"_s.arg( expression ) ) )
   {
     QMessageBox::warning( this, tr( "Column Display Name" ), tr( "Could not set column '%1' as display name.\nParser error:\n%2" ).arg( previewAction->text(), mFeatureListView->parserErrorString() ) );
@@ -803,6 +808,8 @@ void QgsDualView::previewColumnChanged( QAction *previewAction, const QString &e
     mFeatureListPreviewButton->setPopupMode( QToolButton::InstantPopup );
   }
 
+  // Persist the plain field name on the layer, not the COALESCE-wrapped one.
+  mLayer->setDisplayExpression( expression );
   setDisplayExpression( mFeatureListView->displayExpression() );
 }
 
