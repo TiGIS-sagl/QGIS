@@ -24,6 +24,7 @@
 #include "qgswfsprovider.h"
 
 #include <QString>
+#include <QtGlobal>
 #include <QUrlQuery>
 
 #include "moc_qgswfsshareddata.cpp"
@@ -116,34 +117,10 @@ QString QgsWFSSharedData::srsName() const
 
 QString QgsWFSSharedData::computedExpression( const QgsExpression &expression ) const
 {
-  if ( expression.isValid() )
-  {
-    QgsOgcUtils::GMLVersion gmlVersion;
-    QgsOgcUtils::FilterVersion filterVersion;
-    bool honourAxisOrientation = false;
-    getVersionValues( gmlVersion, filterVersion, honourAxisOrientation );
-
-    QMap<QString, QString> fieldNameToXPathMap;
-    if ( !mFieldNameToXPathAndIsNestedContentMap.isEmpty() )
-    {
-      for ( auto iterFieldName = mFieldNameToXPathAndIsNestedContentMap.constBegin(); iterFieldName != mFieldNameToXPathAndIsNestedContentMap.constEnd(); ++iterFieldName )
-      {
-        const QString &fieldName = iterFieldName.key();
-        const auto &value = iterFieldName.value();
-        fieldNameToXPathMap[fieldName] = value.first;
-      }
-    }
-
-    QDomDocument expressionDoc;
-    QDomElement expressionElem = QgsOgcUtils::
-      expressionToOgcExpression( expression, expressionDoc, gmlVersion, filterVersion, mGeometryAttribute, srsName(), honourAxisOrientation, mURI.invertAxisOrientation(), nullptr, true, fieldNameToXPathMap, mNamespacePrefixToURIMap );
-
-    if ( !expressionElem.isNull() )
-    {
-      expressionDoc.appendChild( expressionElem );
-      return expressionDoc.toString();
-    }
-  }
+  // Temporary workaround: do not push QgsFeatureRequest filter expressions to
+  // the WFS server. They are still evaluated client-side by
+  // QgsAbstractFeatureIterator::nextFeatureFilterExpression().
+  Q_UNUSED( expression )
   return QString();
 }
 
