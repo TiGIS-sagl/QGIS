@@ -115,11 +115,33 @@ QgsBackgroundCachedFeatureIterator::QgsBackgroundCachedFeatureIterator(
   if ( cacheDataProvider && ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Fid || ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Fids && mRequest.filterFids().size() < 100000 ) ) )
   {
     QgsFeatureRequest requestCache;
+    // Negative feature ids are used for features added to an edit buffer and
+    // not yet committed to the provider (see FID_IS_NEW): they can never have
+    // been known by the server, so requesting them would uselessly trigger a
+    // full download of the layer. Just drop them from the request.
     QgsFeatureIds qgisIds;
     if ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Fid )
-      qgisIds.insert( mRequest.filterFid() );
+    {
+      if ( !FID_IS_NEW( mRequest.filterFid() ) )
+        qgisIds.insert( mRequest.filterFid() );
+    }
     else
-      qgisIds = mRequest.filterFids();
+    {
+      const QgsFeatureIds requestedIds = mRequest.filterFids();
+      for ( const QgsFeatureId requestedId : requestedIds )
+      {
+        if ( !FID_IS_NEW( requestedId ) )
+          qgisIds.insert( requestedId );
+      }
+    }
+    if ( qgisIds.isEmpty() )
+    {
+      // All the requested fids are uncommitted features that cannot exist
+      // server-side nor in the cache: return an empty iterator, without
+      // triggering any download.
+      mDownloadFinished = true;
+      return;
+    }
     QgsFeatureIds dbIds = mShared->dbIdsFromQgisIds( qgisIds );
     // Do all requested fids have been known at some point by the provider ?
     if ( dbIds.size() == qgisIds.size() )
