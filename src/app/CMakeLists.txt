@@ -622,6 +622,16 @@ target_link_libraries(qgis_app
 
 target_compile_definitions(qgis_app PRIVATE "-DQT_NO_FOREACH")
 
+# Preload the OpenSSL legacy provider before QCA advertises capabilities:
+# QCA 2.3.x only reports pkcs12 support when the legacy provider is already
+# loaded, but SDK builds on Windows ship no system ossl-modules dir, so
+# OSSL_PROVIDER_available() is always false and P12 import is rejected.
+find_package(OpenSSL)
+if (OPENSSL_FOUND AND NOT OPENSSL_VERSION VERSION_LESS 3)
+  target_link_libraries(qgis_app PRIVATE OpenSSL::Crypto)
+  target_compile_definitions(qgis_app PRIVATE QGIS_PRELOAD_OPENSSL_LEGACY)
+endif()
+
 if (USE_PRECOMPILED_HEADERS)
   target_precompile_headers(qgis_app PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${CMAKE_SOURCE_DIR}/src/core/qgis.h>)
 endif()

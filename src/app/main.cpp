@@ -19,6 +19,10 @@
 //qt includes
 #include "qgsconfig.h"
 
+#ifdef QGIS_PRELOAD_OPENSSL_LEGACY
+#include <openssl/provider.h>
+#endif
+
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -598,6 +602,19 @@ APP_EXPORT
 #endif
 int main( int argc, char *argv[] )
 {
+  // Preload the OpenSSL legacy provider before any QCA use: QCA decides
+  // whether pkcs12 is supported the first time a provider is instantiated,
+  // so the provider must already be loaded at that point. Point libcrypto
+  // at the application dir (where the bundle deploys legacy.dll) instead
+  // of relying on env vars. Failure is non-fatal: without it, P12 import
+  // keeps being rejected but everything else works as before.
+#ifdef QGIS_PRELOAD_OPENSSL_LEGACY
+  {
+    const QString appDir = QFileInfo( QString::fromLocal8Bit( argv[0] ) ).absolutePath();
+    OSSL_PROVIDER_set_default_search_path( nullptr, appDir.toLocal8Bit().constData() );
+    OSSL_PROVIDER_load( nullptr, "legacy" );
+  }
+#endif
   //log messages written before creating QgsApplication
   QStringList preApplicationLogMessages;
   QStringList preApplicationWarningMessages;
