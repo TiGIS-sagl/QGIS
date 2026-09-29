@@ -16,6 +16,8 @@ This repository is based on upstream QGIS and contains targeted changes to achie
 
 - **Custom icons** — application icons (`images/icons/` and `platform/windows/rc/qgis.ico`) have been modified to a yellow color to allow the user to differentiate this QGIS from the original one.
 
+- **Preload of the OpenSSL legacy provider on Windows SDK builds** — at startup (`main.cpp`, before any QCA use) the application points libcrypto at its own folder and explicitly loads the `legacy` provider shipped in the bundle. QCA 2.3.x only advertises `pkcs12` support when that provider is already loaded, but SDK-based Windows builds have no system `ossl-modules` directory, so importing PKCS#12 identities was always rejected with "QCA library has no PKCS#12 support". The preload is best-effort: if the provider is missing, everything works as before minus P12.
+
 <img src="images/README-md/main_logo.png" width="300">
 
 [![🧪 QGIS tests](https://github.com/qgis/QGIS/actions/workflows/run-tests.yml/badge.svg)](https://github.com/qgis/QGIS/actions/workflows/run-tests.yml?query=branch%3Amaster+event%3Apush)
