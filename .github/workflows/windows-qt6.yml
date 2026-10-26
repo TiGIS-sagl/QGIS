@@ -96,14 +96,8 @@ jobs:
                 -D USE_CCACHE=ON \
                 -D WITH_QTWEBENGINE=OFF \
                 -D VCPKG_INSTALL_OPTIONS="--x-buildtrees-root=C:/src" \
-<<<<<<< HEAD
                 -D "NUGET_USERNAME=${GITHUB_ACTOR}" \
                 -D NUGET_TOKEN=${{ secrets.GITHUB_TOKEN }}
-=======
-                -D NUGET_USERNAME=${{ github.actor }} \
-                -D NUGET_TOKEN=${{ secrets.GITHUB_TOKEN }} \
-                -D WITH_SERVER=OFF
->>>>>>> c7b27a0b2d9 (- aggiunte icone personalizzate)
 
       - name: 🌋 Build
         shell: bash
@@ -132,14 +126,9 @@ jobs:
           vcpkg.exe export --zip --output-dir=./sdk --x-install-root=./build/vcpkg_installed --x-manifest-root=vcpkg
 
       - name: 📤 Upload sdk
-<<<<<<< HEAD
 #        if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
 
-=======
-        #        if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
-        uses: actions/upload-artifact@v7
->>>>>>> 5b246abb979 (- aggiunto il repo tra i compilabili in qt6)
         with:
           name: qgis-sdk-x64-windows
           path: |

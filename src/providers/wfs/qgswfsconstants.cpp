@@ -52,5 +52,6 @@ const QString QgsWFSConstants::URI_PARAM_SQL( u"sql"_s );
 const QString QgsWFSConstants::URI_PARAM_HTTPMETHOD( u"httpMethod"_s );
 const QString QgsWFSConstants::URI_PARAM_FEATURE_MODE( u"featureMode"_s );
 const QString QgsWFSConstants::URI_PARAM_DISABLE_DECOMPRESSED_SAFETY_CHECK_THRESHOLD( u"disableDecompressedSafetyCheckThreshold"_s );
+const QString QgsWFSConstants::URI_PARAM_SINGLE_FID_FETCH( u"singleFidFetch"_s );
 
 const QString QgsWFSConstants::VERSION_AUTO( u"auto"_s );

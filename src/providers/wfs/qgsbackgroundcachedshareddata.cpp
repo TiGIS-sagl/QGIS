@@ -1031,6 +1031,26 @@ QgsFeatureIds QgsBackgroundCachedSharedData::dbIdsFromQgisIds( const QgsFeatureI
   return dbIds;
 }
 
+bool QgsBackgroundCachedSharedData::isFeatureCached( QgsFeatureId qgisId )
+{
+  // The feature is considered cached when the record is physically present in
+  // the SpatiaLite feature cache: the id_cache mapping alone may be stale,
+  // e.g. after an invalidateCache() which preserves id_cache while dropping
+  // the feature cache.
+  QgsFeatureIds qgisIds;
+  qgisIds.insert( qgisId );
+  const QgsFeatureIds dbIds = dbIdsFromQgisIds( qgisIds );
+  if ( dbIds.isEmpty() || !mCacheDataProvider )
+    return false;
+
+  QgsFeatureRequest requestCache;
+  requestCache.setFilterFids( dbIds );
+  requestCache.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
+  QgsFeatureIterator it( mCacheDataProvider->getFeatures( requestCache ) );
+  QgsFeature f;
+  return it.nextFeature( f );
+}
+
 // Used by WFS-T
 bool QgsBackgroundCachedSharedData::deleteFeatures( const QgsFeatureIds &fidlist )
 {

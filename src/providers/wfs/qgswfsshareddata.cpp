@@ -24,8 +24,8 @@
 #include "qgswfsprovider.h"
 
 #include <QString>
-#include <QtGlobal>
 #include <QUrlQuery>
+#include <QtGlobal>
 
 #include "moc_qgswfsshareddata.cpp"
 
@@ -305,6 +305,59 @@ QgsRectangle QgsWFSSharedData::getExtentFromSingleFeatureRequest() const
 {
   QgsWFSSingleFeatureRequest request( this );
   return request.getExtent();
+}
+
+bool QgsWFSSharedData::fetchSingleFeatureByFid( QgsFeatureId fid, QVector<QgsFeatureUniqueIdPair> &out )
+{
+  out.clear();
+
+  if ( !mURI.singleFidFetch() )
+    return false;
+
+  // The gml:id of the feature is known once it has been downloaded at least
+  // once, and the mapping survives cache invalidations (id_cache sqlite db).
+  const QString gmlId = findUniqueId( fid );
+  if ( gmlId.isEmpty() )
+  {
+    QgsDebugMsgLevel( u"QgsWFSSharedData::fetchSingleFeatureByFid(): cannot resolve gml:id of fid %1. Waiting for the background download"_s.arg( fid ), 4 );
+    return false;
+  }
+
+  QgsWFSSingleFeatureRequest request( this );
+  if ( !request.getFeatureByGmlId( gmlId, out ) )
+    return false;
+
+  // Apply the same post-processing as QgsWFSFeatureDownloaderImpl::run()
+  for ( QgsFeatureUniqueIdPair &featPair : out )
+  {
+    if ( mGetFeatureEPSGDotHonoursEPSGOrder && featPair.first.hasGeometry() )
+    {
+      QgsGeometry g = featPair.first.geometry();
+      g.transform( QTransform( 0, 1, 1, 0, 0, 0 ) );
+      featPair.first.setGeometry( g );
+    }
+
+    // Coerce geometry type if needed
+    if ( featPair.first.hasGeometry() && QgsWkbTypes::flatType( featPair.first.geometry().wkbType() ) != QgsWkbTypes::flatType( mWKBType ) )
+    {
+      QVector< QgsGeometry > coercedGeoms = featPair.first.geometry().coerceToType( mWKBType );
+      if ( coercedGeoms.size() == 1 )
+        featPair.first.setGeometry( coercedGeoms[0] );
+    }
+    else if ( featPair.first.hasGeometry() && !mWFSGeometryTypeFilter.isEmpty() && QgsWkbTypes::flatType( featPair.first.geometry().wkbType() ) != mWKBType )
+    {
+      QgsGeometry g = featPair.first.geometry();
+      g.convertToCurvedMultiType();
+      featPair.first.setGeometry( g );
+    }
+  }
+
+  // Serialize the feature into the cache. This is idempotent with respect to
+  // the background download that may have already cached it, and re-assigns
+  // the stable qgis id through the id_cache mapping.
+  serializeFeatures( out );
+
+  return !out.isEmpty();
 }
 
 long long QgsWFSSharedData::getFeatureCountFromServer() const
@@ -702,6 +755,86 @@ QgsRectangle QgsWFSSingleFeatureRequest::getExtent()
   }
   delete parser;
   return extent;
+}
+
+bool QgsWFSSingleFeatureRequest::getFeatureByGmlId( const QString &gmlId, QVector<QgsFeatureUniqueIdPair> &out )
+{
+  out.clear();
+
+  if ( mUri.httpMethod() != Qgis::HttpMethod::Get )
+  {
+    // Not implemented for POST mode: caller will fallback on the background download
+    return false;
+  }
+
+  if ( gmlId.isEmpty() )
+    return false;
+
+  QUrl getFeatureUrl( mUri.requestUrl( u"GetFeature"_s, mUri.httpMethod() ) );
+  QUrlQuery query( getFeatureUrl );
+  query.addQueryItem( u"VERSION"_s, mShared->mWFSVersion );
+  if ( mShared->mWFSVersion.startsWith( "2.0"_L1 ) )
+    query.addQueryItem( u"TYPENAMES"_s, mUri.typeName() );
+  else
+    query.addQueryItem( u"TYPENAME"_s, mUri.typeName() );
+
+  const QString namespaceValue( mShared->mCaps.getNamespaceParameterValue( mShared->mWFSVersion, mUri.typeName() ) );
+  if ( !namespaceValue.isEmpty() )
+  {
+    if ( mShared->mWFSVersion.startsWith( "2.0"_L1 ) )
+      query.addQueryItem( u"NAMESPACES"_s, namespaceValue );
+    else
+      query.addQueryItem( u"NAMESPACE"_s, namespaceValue );
+  }
+
+  QString srsName( mShared->srsName() );
+  if ( !srsName.isEmpty() )
+    query.addQueryItem( u"SRSNAME"_s, srsName );
+
+  // Encode the gml:id with the FEATUREID KVP parameter.
+  // WFS 1.0/1.1 servers (GeoServer, MapServer...) emit identifiers of the form
+  // "typename.localId" and expect the same form back. WFS 2.0 servers accept
+  // the raw gml:id.
+  // Note: the server-side filters (mWFSFilter, ...) are intentionally not
+  // combined with FEATUREID here, as WFS 1.0/1.1 GetFeature KVP requests
+  // do not allow FEATUREID and FILTER together. If a filter would discard
+  // the feature, the response is empty and the caller falls back on the
+  // background download.
+  QString featureIdKVP( gmlId );
+  if ( !mShared->mWFSVersion.startsWith( "2.0"_L1 ) && !gmlId.contains( '.'_L1 ) )
+    featureIdKVP = mUri.typeName() + '.' + gmlId;
+  query.addQueryItem( u"FEATUREID"_s, featureIdKVP );
+  getFeatureUrl.setQuery( query );
+
+  if ( !sendGET( getFeatureUrl, QString(), true ) )
+    return false;
+
+  const QByteArray &buffer = response();
+
+  QgsDebugMsgLevel( u"parsing QgsWFSSingleFeatureRequest FEATUREID response: "_s + buffer, 4 );
+
+  // parse XML
+  QgsGmlStreamingParser *parser = mShared->createParser();
+  QString gmlProcessErrorMsg;
+  if ( parser->processData( buffer, true, gmlProcessErrorMsg ) )
+  {
+    const QVector<QgsGmlStreamingParser::QgsGmlFeaturePtrGmlIdPair> featurePtrList = parser->getAndStealReadyFeatures();
+    for ( int i = 0; i < featurePtrList.size(); i++ )
+    {
+      const QgsGmlStreamingParser::QgsGmlFeaturePtrGmlIdPair &featPair = featurePtrList[i];
+      out.push_back( QgsFeatureUniqueIdPair( *( featPair.first ), featPair.second ) );
+      delete featPair.first;
+    }
+  }
+  else
+  {
+    QgsDebugError( u"Failed to parse FEATUREID GetFeature response: "_s + gmlProcessErrorMsg );
+  }
+  delete parser;
+
+  // Some servers return a valid document with 0 features, e.g. when the
+  // requested feature no longer exists on the server.
+  return !out.isEmpty();
 }
 
 QString QgsWFSSingleFeatureRequest::errorMessageWithReason( const QString &reason )

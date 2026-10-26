@@ -407,6 +407,7 @@ bool QgsBackgroundCachedFeatureIterator::fetchFeature( QgsFeature &f )
 
   // First step is to iterate over the on-disk cache
   QgsFeature cachedFeature;
+  bool cacheIteratorRefreshed = false;
   while ( true )
   {
     if ( !mCachedFeatures.empty() )
@@ -419,7 +420,43 @@ bool QgsBackgroundCachedFeatureIterator::fetchFeature( QgsFeature &f )
     else
     {
       if ( !mCacheIterator.nextFeature( cachedFeature ) )
+      {
+        // The cache iterator is exhausted. For a request by fid, the feature
+        // might be on the server but not (yet) in the local cache, e.g. right
+        // after a WFS-T commit followed by the invalidation of the cache by
+        // reloadData(). Instead of waiting for the full background layer
+        // download to deliver the feature at its position in the stream, ask
+        // the provider to fetch it directly with a synchronous
+        // single-feature request, and re-issue the cache query so that it can
+        // be returned.
+        // On a regular cache exhausted state (feature already cached or not
+        // fetch-able), do nothing so as to keep the usual fallback to the
+        // second step waiting for the background downloader.
+        if ( !cacheIteratorRefreshed && mRequest.filterType() == Qgis::FeatureRequestFilterType::Fid && !mDownloadFinished && !mShared->isFeatureCached( mRequest.filterFid() ) )
+        {
+          cacheIteratorRefreshed = true;
+
+          // The output of the single-feature fetch is discarded here: it has
+          // been serialized into the local cache, and the refreshed cache
+          // query below is the one that will deliver the feature.
+          QVector<QgsFeatureUniqueIdPair> singleFidFetchedFeatures;
+          if ( mShared->fetchSingleFeatureByFid( mRequest.filterFid(), singleFidFetchedFeatures ) )
+          {
+            QgsVectorDataProvider *cacheDataProvider = mShared->cacheDataProvider();
+            if ( cacheDataProvider )
+            {
+              QgsFeatureRequest requestCache = initRequestCache( /* genCounter not used for FilterFid requests */ 0 );
+              fillRequestCache( requestCache );
+              mCacheIterator = cacheDataProvider->getFeatures( requestCache );
+              // Re-run the loop so that the refreshed cache query is consumed
+              continue;
+            }
+          }
+          // else: fallback to the regular second step waiting for the
+          // background download.
+        }
         break;
+      }
     }
 
     if ( mInterruptionChecker && mInterruptionChecker->isCanceled() )

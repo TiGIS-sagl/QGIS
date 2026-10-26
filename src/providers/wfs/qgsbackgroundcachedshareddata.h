@@ -101,6 +101,9 @@ class QgsBackgroundCachedSharedData
     //! Retrieve the dbId from the qgisId
     QgsFeatureIds dbIdsFromQgisIds( const QgsFeatureIds &qgisIds ) const;
 
+    //! Returns whether the feature of the given \a qgisId is present in the local (SpatiaLite) feature cache
+    bool isFeatureCached( QgsFeatureId qgisId );
+
     //! Returns maximum number of features to download, or 0 if unlimited
     int requestLimit() const { return mRequestLimit; }
 
@@ -153,6 +156,24 @@ class QgsBackgroundCachedSharedData
      * the cache. Also used by a insert operation.
     */
     void serializeFeatures( QVector<QgsFeatureUniqueIdPair> &featureList );
+
+    /**
+     * Attempts to fetch a single feature directly from the server by \a fid,
+     * with a synchronous single-feature GetFeature request, serialize it into
+     * the cache and return it in \a out (with its stable id assigned through
+     * the id cache mapping). Returns FALSE if the provider does not implement
+     * this functionality or if the fetch failed, so that the caller should
+     * fallback to the regular logic of waiting for the background download.
+     * Used by QgsBackgroundCachedFeatureIterator::fetchFeature() for
+     * QgsFeatureRequest::FilterFid requests that cannot be satisfied from the
+     * local cache, instead of waiting for the full layer to be downloaded.
+    */
+    virtual bool fetchSingleFeatureByFid( QgsFeatureId fid, QVector<QgsFeatureUniqueIdPair> &out )
+    {
+      Q_UNUSED( fid )
+      Q_UNUSED( out )
+      return false;
+    }
 
     //! Called by QgsFeatureDownloader::run() at the end of the download process.
     void endOfDownload( bool success, long long featureCount, bool truncatedResponse, bool interrupted, const QString &errorMsg );
