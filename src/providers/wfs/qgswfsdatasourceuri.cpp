@@ -198,6 +198,7 @@ QSet<QString> QgsWFSDataSourceURI::unknownParamKeys() const
     QgsWFSConstants::URI_PARAM_SQL,
     QgsWFSConstants::URI_PARAM_HTTPMETHOD,
     QgsWFSConstants::URI_PARAM_FEATURE_MODE,
+    QgsWFSConstants::URI_PARAM_SINGLE_FID_FETCH,
   };
 
   QSet<QString> l_unknownParamKeys;
@@ -505,6 +506,13 @@ bool QgsWFSDataSourceURI::skipInitialGetFeature() const
   if ( !mURI.hasParam( QgsWFSConstants::URI_PARAM_SKIP_INITIAL_GET_FEATURE ) )
     return false;
   return mURI.param( QgsWFSConstants::URI_PARAM_SKIP_INITIAL_GET_FEATURE ).toUpper() == "TRUE"_L1;
+}
+
+bool QgsWFSDataSourceURI::singleFidFetch() const
+{
+  if ( !mURI.hasParam( QgsWFSConstants::URI_PARAM_SINGLE_FID_FETCH ) )
+    return true;
+  return mURI.param( QgsWFSConstants::URI_PARAM_SINGLE_FID_FETCH ).toUpper() != "FALSE"_L1;
 }
 
 QgsWFSDataSourceURI::FeatureMode QgsWFSDataSourceURI::featureMode() const

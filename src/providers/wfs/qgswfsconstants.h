@@ -57,6 +57,8 @@ struct QgsWFSConstants
     static const QString URI_PARAM_SQL;
     static const QString URI_PARAM_HTTPMETHOD;
     static const QString URI_PARAM_FEATURE_MODE;
+    //! Whether the provider may issue a synchronous single-feature GetFeature request for FilterFid requests when the feature is not in the local cache (default: true)
+    static const QString URI_PARAM_SINGLE_FID_FETCH;
 
     //
     static const QString VERSION_AUTO;

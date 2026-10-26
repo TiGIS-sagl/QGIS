@@ -149,6 +149,9 @@ class QgsWFSDataSourceURI
     //! Returns how to analyze DescribeFeatureType response.
     FeatureMode featureMode() const;
 
+    //! Returns whether a synchronous single-feature GetFeature request may be issued for FilterFid requests when the requested feature is missing from the local cache. Defaults to true
+    bool singleFidFetch() const;
+
     //! Builds a derived uri from a base uri
     static QString build( const QString &uri, const QString &typeName, const QString &crsString, const QString &sql, const QString &filter, bool restrictToCurrentViewExtent, const QString &featureFormat );
 

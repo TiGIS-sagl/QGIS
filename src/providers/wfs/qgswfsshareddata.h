@@ -52,6 +52,9 @@ class QgsWFSSharedData : public QObject, public QgsBackgroundCachedSharedData
 
     bool isRestrictedToRequestBBOX() const override;
 
+    //! Attempts to fetch a single feature directly from the server by its fid, through a synchronous FEATUREID GetFeature request. See QgsBackgroundCachedSharedData::fetchSingleFeatureByFid().
+    bool fetchSingleFeatureByFid( QgsFeatureId fid, QVector<QgsFeatureUniqueIdPair> &out ) override;
+
     bool hasGeometry() const override { return !mGeometryAttribute.isEmpty(); }
 
     const QgsWfsCapabilities &capabilities() const { return mCaps; }
@@ -194,6 +197,13 @@ class QgsWFSSingleFeatureRequest : public QgsWfsRequest
 
     //! Returns the feature  extent of the single feature requested
     QgsRectangle getExtent();
+
+    /**
+     * Issues a synchronous GetFeature request for \a gmlId (FEATUREID=<gmlId>)
+     * and returns the matching feature(s) in \a out. Returns FALSE in case of
+     * error, in which case \a out is left empty.
+     */
+    bool getFeatureByGmlId( const QString &gmlId, QVector<QgsFeatureUniqueIdPair> &out );
 
   protected:
     QString errorMessageWithReason( const QString &reason ) override;
