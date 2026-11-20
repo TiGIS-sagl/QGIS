@@ -17,6 +17,7 @@
 #include "qgsgeometry.h"
 #include "qgslogger.h"
 #include "qgsmessagelog.h"
+#include "qgstransaction.h"
 #include "qgsvectordataprovider.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectorlayereditbuffergroup.h"
@@ -376,6 +377,32 @@ bool QgsVectorLayerEditBuffer::commitChanges( QStringList &commitErrors )
 
   bool success = true;
 
+  // we need to snapshot each list of features or features ids so that if one of this commit
+  // functions fails after the rollback the buffer can be rolledback as well
+  const QgsFeatureMap snapAddedFeatures = mAddedFeatures;
+  const QgsFeatureIds snapDeletedFeatureIds = mDeletedFeatureIds;
+  const QgsFieldNameMap snapRenamedAttributes = mRenamedAttributes;
+  const QList<QgsField> snapAddedAttributes = mAddedAttributes;
+  const QgsChangedAttributesMap snapChangedAttributeValues = mChangedAttributeValues;
+  const QgsGeometryMap snapChangedGeometries = mChangedGeometries;
+  const QgsAttributeList snapDeletedAttributeIds = mDeletedAttributeIds;
+
+  std::unique_ptr<QgsTransaction> transaction;
+  if ( QgsTransaction::supportsTransaction( L ) && !L->dataProvider()->transaction() )
+  {
+    transaction.reset( QgsTransaction::create( QgsTransaction::connectionString( L->source() ), L->providerType() ) );
+    QString err;
+    if ( transaction && transaction->begin( err ) )
+      if ( transaction->addLayer( L, true ) )
+      {
+        transaction->rollback( err );
+        transaction.reset();
+      }
+      else
+        // if it fail to enable the transaction it will fallback to make multiple transactions
+        transaction.reset();
+  }
+
   // geometry updates   attribute updates
   // yes                no                    => changeGeometryValues
   // no                 yes                   => changeAttributeValues
@@ -460,6 +487,31 @@ bool QgsVectorLayerEditBuffer::commitChanges( QStringList &commitErrors )
       commitErrors << "    " + e.replace( '\n', "\n    "_L1 );
     }
     provider->clearErrors();
+  }
+
+  if ( transaction )
+  {
+    QString err;
+    if ( success )
+    {
+      if ( !transaction->commit( err ) )
+      {
+        success = false;
+        commitErrors << tr( "ERROR: could not commit the transaction; %1" ).arg( err );
+      }
+    }
+    if ( !success )
+    {
+      transaction->rollback( err );
+      // we need to restore the original buffer state
+      mAddedFeatures = snapAddedFeatures;
+      mDeletedFeatureIds = snapDeletedFeatureIds;
+      mRenamedAttributes = snapRenamedAttributes;
+      mAddedAttributes = snapAddedAttributes;
+      mChangedAttributeValues = snapChangedAttributeValues;
+      mChangedGeometries = snapChangedGeometries;
+      mDeletedAttributeIds = snapDeletedAttributeIds;
+    }
   }
 
   return success;
